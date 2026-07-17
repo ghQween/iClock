@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TimeClock">
+<title>TimeClock</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:    #004B87;
+    --navy-dk: #003660;
+    --red:     #DA291C;
+    --red-dk:  #b81f14;
+    --white:   #FFFFFF;
+    --bg:      #EDEDED;
+    --surface: #FFFFFF;
+    --surface2:#F0F4F8;
+    --border:  #C8D4DF;
+    --border2: #B0BFCC;
+    --green:   #1A7A3C;
+    --text:    #1A1A1A;
+    --muted:   #5A6872;
+    --mono:    'Roboto Mono', monospace;
+    --sans:    'Barlow', sans-serif;
+    --cond:    'Barlow Condensed', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  button:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--navy);
+    outline-offset: 1px;
+  }
+  .tab:focus-visible, .settings-btn:focus-visible { outline-color: #fff; }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--navy);
+    padding: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+  }
+
+  .header-red-bar {
+    height: 4px;
+    background: var(--red);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-eagle {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .logo-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+  }
+
+  .logo-main {
+    font-family: var(--cond);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .logo-sub {
+    font-family: var(--sans);
+    font-size: 10px;
+    color: rgba(255,255,255,0.75);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .settings-btn {
+    width: 36px; height: 36px;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+    color: rgba(255,255,255,0.9);
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .settings-btn:active { background: rgba(255,255,255,0.25); }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    background: var(--navy-dk);
+    padding: 0 4px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 11px 8px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-family: var(--cond);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.7);
+    text-align: center;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .tab.active { color: var(--white); border-bottom-color: var(--red); }
+
+  /* ── PAGE SECTIONS ── */
+  .page { display: none; padding: 16px 14px 100px; }
+  .page.active { display: block; }
+
+  /* ── CLOCK FACE ── */
+  .clock-face {
+    background: var(--navy);
+    border-radius: 4px;
+    padding: 28px 20px 24px;
+    text-align: center;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,75,135,0.2);
+  }
+
+  .clock-face::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 4px;
+    background: var(--red);
+  }
+
+  .live-time {
+    font-family: var(--mono);
+    font-size: 52px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--white);
+    line-height: 1;
+  }
+
+  .live-date {
+    font-family: var(--cond);
+    font-size: 14px;
+    color: rgba(255,255,255,0.75);
+    margin-top: 8px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transition: background 0.3s;
+  }
+  .status-dot.clocked-in { background: #4ade80; box-shadow: 0 0 8px #4ade80; animation: pulse 2s infinite; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .status-label {
+    font-family: var(--cond);
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .status-label.clocked-in { color: #4ade80; }
+
+  .elapsed-time {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    margin-top: 6px;
+    min-height: 20px;
+  }
+
+  /* ── PUNCH BUTTON ── */
+  .punch-btn {
+    width: 100%;
+    padding: 20px;
+    border: none;
+    border-radius: 4px;
+    font-family: var(--cond);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.15s;
+    margin-bottom: 14px;
+    background: var(--red);
+    color: var(--white);
+    box-shadow: 0 2px 6px rgba(218,41,28,0.35);
+  }
+
+  .punch-btn.clock-out {
+    background: var(--navy);
+    box-shadow: 0 2px 6px rgba(0,75,135,0.3);
+  }
+
+  .punch-btn.stage-depart {
+    background: var(--green);
+    box-shadow: 0 2px 6px rgba(26,122,60,0.35);
+  }
+
+  .punch-btn.stage-return {
+    background: #B45309;
+    box-shadow: 0 2px 6px rgba(180,83,9,0.35);
+  }
+
+  /* ── START EXTRA ROUTE (post-clock-out secondary action) ── */
+  .route-start-btn {
+    display: none;
+    width: 100%;
+    margin: -6px 0 14px;
+    padding: 10px;
+    background: none;
+    border: none;
+    color: var(--green);
+    font-family: var(--cond);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+  .route-start-btn.show { display: block; }
+  .route-start-btn:active { color: var(--navy-dk); }
+
+  .punch-btn:active { transform: scale(0.98); }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-family: var(--cond);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--navy);
+    margin-bottom: 8px;
+    border-left: 3px solid var(--red);
+    padding-left: 8px;
+  }
+
+  /* ── SUMMARY GRID ── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    border-top: 3px solid var(--navy);
+  }
+
+  .summary-card .label {
+    font-family: var(--cond);
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .summary-card .value {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-top: 4px;
+  }
+
+  .summary-card .value.money { color: var(--red); }
+  .summary-card .value.route { color: var(--green); }
+
+  .pay-card { grid-column: 1 / -1; }
+
+  /* ── TODAY'S PUNCHES ── */
+  .punches-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .punch-item {
+    display: flex;
+    align-items: center;
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    background: var(--surface);
+  }
+  .punch-item:last-child { border-bottom: none; }
+  .punch-item.alt { background: var(--surface2); }
+  .punch-item.in-leg { padding-left: 24px; box-shadow: inset 3px 0 0 #A8C4E0; }
+
+  /* ── ROUTE LEG GROUPING ── */
+  .leg-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px 6px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .leg-chip {
+    font-family: var(--cond);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--navy);
+    background: #DCE9F5;
+    border: 1px solid #A8C4E0;
+    border-radius: 3px;
+    padding: 3px 8px;
+  }
+  .leg-chip.route { background: #D4EAD8; color: var(--green); border-color: #A8D5B0; }
+  .leg-meta { font-family: var(--mono); font-size: 11px; color: var(--muted); font-weight: 700; }
+  .leg-meta.live { color: var(--green); }
+
+  .history-day-routes {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    font-weight: 700;
+  }
+
+  .route-legs {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .punch-type-badge {
+    font-family: var(--cond);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 4px 8px;
+    border-radius: 3px;
+    min-width: 44px;
+    text-align: center;
+  }
+  .punch-type-badge.in { background: #D4EAD8; color: var(--green); border: 1px solid #A8D5B0; }
+  .punch-type-badge.out { background: #FAE0DE; color: var(--red-dk); border: 1px solid #F0B8B4; }
+  .punch-type-badge.depart { background: #DCE9F5; color: var(--navy); border: 1px solid #A8C4E0; }
+  .punch-type-badge.return { background: #FFF3D6; color: #8A5A00; border: 1px solid #E8C97A; }
+
+  .punch-time { font-family: var(--mono); font-size: 15px; color: var(--text); font-weight: 400; }
+  .punch-note { font-size: 12px; color: var(--muted); font-style: italic; word-break: break-word; }
+  .punch-duration { font-family: var(--mono); font-size: 12px; color: var(--navy); margin-left: auto; font-weight: 700; text-align: right; }
+  .punch-duration.open { color: var(--green); }
+
+  .delete-punch {
+    background: none;
+    border: none;
+    color: var(--border2);
+    font-size: 15px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: color 0.15s;
+  }
+  .delete-punch:active { color: var(--red); }
+
+  .empty-state {
+    text-align: center;
+    padding: 32px 20px;
+    color: var(--muted);
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  /* ── MANUAL PUNCH ── */
+  .manual-section { margin-top: 14px; }
+
+  .add-manual-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px dashed var(--border2);
+    border-radius: 4px;
+    color: var(--navy);
+    font-family: var(--cond);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .add-manual-btn:active { background: var(--surface2); border-color: var(--navy); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,30,60,0.6);
+    z-index: 200;
+    align-items: flex-end;
+    backdrop-filter: blur(3px);
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-top: 4px solid var(--navy);
+    border-radius: 0;
+    padding: 24px 20px 40px;
+    width: 100%;
+    animation: slideUp 0.25s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .modal-title {
+    font-family: var(--cond);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--navy);
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .form-row { margin-bottom: 14px; }
+
+  label {
+    display: block;
+    font-family: var(--cond);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+
+  input[type="time"], input[type="date"], input[type="number"], input[type="text"], select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 16px;
+    padding: 13px 14px;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus, select:focus { border-color: var(--navy); box-shadow: 0 0 0 2px rgba(0,75,135,0.15); }
+
+  .form-row-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+
+  /* ── MANUAL ENTRY MODE TOGGLE ── */
+  .mode-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 3px;
+    gap: 3px;
+    margin-bottom: 10px;
+  }
+  .mode-btn {
+    padding: 10px;
+    border: none;
+    border-radius: 3px;
+    background: none;
+    font-family: var(--cond);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .mode-btn.active { background: var(--navy); color: var(--white); }
+
+  .context-hint {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin: 0 0 14px;
+    text-align: center;
+    min-height: 14px;
+  }
+
+  .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+
+  .btn-cancel {
+    padding: 15px;
+    border-radius: 3px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--muted);
+    font-family: var(--cond);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .btn-save {
+    padding: 15px;
+    border-radius: 3px;
+    border: none;
+    background: var(--navy);
+    color: var(--white);
+    font-family: var(--cond);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .btn-save:active { background: var(--navy-dk); }
+
+  /* ── HISTORY ── */
+  .history-day { margin-bottom: 16px; }
+
+  .history-day-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    padding: 0 2px;
+    gap: 10px;
+  }
+
+  .history-day-label {
+    font-family: var(--cond);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .history-day-pay {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--red);
+    font-weight: 700;
+    padding-top: 1px;
+  }
+
+  .history-day-hours {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .warn-badge {
+    display: inline-block;
+    font-family: var(--cond);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #8A5A00;
+    background: #FFF3D6;
+    border: 1px solid #E8C97A;
+    border-radius: 3px;
+    padding: 2px 6px;
+    margin-top: 4px;
+    margin-right: 4px;
+  }
+
+  .history-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  /* ── SETTINGS ── */
+  .settings-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 14px;
+    border-top: 3px solid var(--navy);
+  }
+
+  .settings-card h3 {
+    font-family: var(--cond);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--navy);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+    gap: 16px;
+  }
+  .settings-row:first-of-type { border-top: none; }
+
+  .settings-row label {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: 0;
+    margin: 0;
+    font-family: var(--sans);
+  }
+
+  .settings-row input { width: 120px; text-align: right; }
+  .settings-row input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--navy); flex-shrink: 0; }
+
+  .export-btn {
+    width: 100%;
+    padding: 15px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,75,135,0.35);
+    background: rgba(0,75,135,0.06);
+    color: var(--navy);
+    font-family: var(--cond);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-bottom: 10px;
+  }
+  .export-btn:active { background: rgba(0,75,135,0.15); }
+
+  .clear-btn {
+    width: 100%;
+    padding: 15px;
+    border-radius: 3px;
+    border: 1px solid rgba(218,41,28,0.35);
+    background: rgba(218,41,28,0.06);
+    color: var(--red);
+    font-family: var(--cond);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .clear-btn:active { background: rgba(218,41,28,0.15); }
+
+  .version-note {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 24px;
+    font-style: italic;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--navy);
+    border-radius: 3px;
+    padding: 10px 20px;
+    font-family: var(--cond);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--white);
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 300;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    max-width: 92vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .bottom-safe { height: env(safe-area-inset-bottom, 20px); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="logo">
+      <span class="logo-eagle" aria-hidden="true">🦅</span>
+      <div class="logo-text">
+        <span class="logo-main"><span style="text-transform:lowercase;">i</span>Clock <span style="font-size:13px;font-weight:400;opacity:0.7;">(beta)</span></span>
+        <span class="logo-sub">Mobile Time Clock</span>
+      </div>
+    </div>
+    <button class="settings-btn" onclick="switchTab('settings')" aria-label="Open settings">⚙</button>
+  </div>
+  <div class="header-red-bar"></div>
+</header>
+
+<div class="tabs" role="tablist">
+  <button type="button" class="tab active" role="tab" aria-selected="true"  onclick="switchTab('clock')"    id="tab-clock">Clock</button>
+  <button type="button" class="tab"        role="tab" aria-selected="false" onclick="switchTab('history')"  id="tab-history">History</button>
+  <button type="button" class="tab"        role="tab" aria-selected="false" onclick="switchTab('settings')" id="tab-settings">Settings</button>
+</div>
+
+<!-- ══ CLOCK PAGE ══ -->
+<div class="page active" id="page-clock">
+
+  <div class="clock-face">
+    <div class="live-time" id="liveTime">--:--:--</div>
+    <div class="live-date" id="liveDate">--</div>
+    <div class="status-row">
+      <div class="status-dot" id="statusDot" aria-hidden="true"></div>
+      <span class="status-label" id="statusLabel">Not clocked in</span>
+    </div>
+    <div class="elapsed-time" id="elapsedTime"></div>
+  </div>
+
+  <button class="punch-btn" id="punchBtn" onclick="handlePunch()">CLOCK IN</button>
+  <button type="button" class="route-start-btn" id="routeStartBtn" onclick="handleRouteStart()">+ Start a second route</button>
+
+  <div class="section-label">Today's Summary</div>
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="label">Hours</div>
+      <div class="value" id="todayHours">0.00</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Total Time</div>
+      <div class="value route" id="todayTotal">0.00</div>
+      <div class="route-legs" id="todayTotalSub">Clock in → clock out</div>
+    </div>
+    <div class="summary-card pay-card" id="todayPayCard">
+      <div class="label">Est. Pay</div>
+      <div class="value money" id="todayPay">$0.00</div>
+    </div>
+  </div>
+
+  <div class="section-label">Today's Punches</div>
+  <div class="punches-list" id="todayPunches">
+    <div class="empty-state">No punches yet today</div>
+  </div>
+
+  <div class="manual-section">
+    <button class="add-manual-btn" onclick="openManualModal()">+ Add Manual Punch</button>
+  </div>
+</div>
+
+<!-- ══ HISTORY PAGE ══ -->
+<div class="page" id="page-history">
+  <div id="historyContent">
+    <div class="empty-state">No history yet</div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS PAGE ══ -->
+<div class="page" id="page-settings">
+  <div class="settings-card">
+    <h3>Pay Settings</h3>
+    <div class="settings-row">
+      <label for="showPay">Show pay estimates</label>
+      <input type="checkbox" id="showPay" onchange="saveSettings()">
+    </div>
+    <div class="settings-row">
+      <label for="hourlyRate">Hourly Rate ($)</label>
+      <input type="number" id="hourlyRate" step="0.25" min="0" inputmode="decimal" placeholder="0.00" onchange="saveSettings()">
+    </div>
+    <div class="settings-row">
+      <label for="otThreshold">Overtime after (hrs/day)</label>
+      <input type="number" id="otThreshold" step="0.5" min="0" inputmode="decimal" placeholder="8" onchange="saveSettings()">
+    </div>
+    <div class="settings-row">
+      <label for="otMultiplier">Overtime Multiplier</label>
+      <input type="number" id="otMultiplier" step="0.25" min="1" inputmode="decimal" placeholder="1.5" onchange="saveSettings()">
+    </div>
+  </div>
+
+  <div class="settings-card">
+    <h3>Data</h3>
+    <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+    <button class="clear-btn" onclick="clearAllData()">Clear All Data</button>
+  </div>
+
+  <div class="version-note">TimeClock v1.10 · total time</div>
+</div>
+
+<!-- ══ MANUAL PUNCH MODAL ══ -->
+<div class="modal-overlay" id="manualModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="manualModalTitle">
+    <div class="modal-title" id="manualModalTitle">Add Manual Punch</div>
+
+    <div class="mode-toggle" role="tablist">
+      <button type="button" class="mode-btn active" id="modeSingle" onclick="setManualMode('single')">Single Punch</button>
+      <button type="button" class="mode-btn" id="modeLeg" onclick="setManualMode('leg')">Route Leg</button>
+      <button type="button" class="mode-btn" id="modeExtra" onclick="setManualMode('extra')">Extra Route</button>
+    </div>
+
+    <div class="context-hint" id="manualContext"></div>
+
+    <div class="form-row">
+      <label for="manualDate">Date</label>
+      <input type="date" id="manualDate" onchange="updateManualContext()">
+    </div>
+
+    <div id="singleFields">
+      <div class="form-row-two">
+        <div>
+          <label for="manualType">Type</label>
+          <select id="manualType">
+            <option value="in">Clock In</option>
+            <option value="depart">Depart to Route</option>
+            <option value="return">Return to P.O.</option>
+            <option value="out">Clock Out</option>
+            <option value="rstart">Route Start (extra)</option>
+            <option value="rend">Route End (extra)</option>
+          </select>
+        </div>
+        <div>
+          <label for="manualTime">Time</label>
+          <input type="time" id="manualTime">
+        </div>
+      </div>
+    </div>
+
+    <div id="legFields" style="display:none">
+      <div class="form-row-two">
+        <div>
+          <label for="legDepart">Departed at</label>
+          <input type="time" id="legDepart">
+        </div>
+        <div>
+          <label for="legReturn">Returned at</label>
+          <input type="time" id="legReturn">
+        </div>
+      </div>
+    </div>
+
+    <div id="extraFields" style="display:none">
+      <div class="form-row-two">
+        <div>
+          <label for="extraStart">Route started at</label>
+          <input type="time" id="extraStart">
+        </div>
+        <div>
+          <label for="extraEnd">Route ended at</label>
+          <input type="time" id="extraEnd">
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="manualNote" id="manualNoteLabel">Note (optional)</label>
+      <input type="text" id="manualNote" maxlength="300" placeholder="e.g. Open route adjustment">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeManualModal()">Cancel</button>
+      <button class="btn-save" id="manualSaveBtn" onclick="saveManualPunch()">Add Punch</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ROUTE DESCRIPTOR MODAL ══ -->
+<div class="modal-overlay" id="routeModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="routeModalTitle">
+    <div class="modal-title" id="routeModalTitle">Second Route</div>
+    <div class="form-row">
+      <label for="routeDesc">Route Descriptor:</label>
+      <input type="text" id="routeDesc" maxlength="60" placeholder="e.g. Route 22">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeRouteModal()">Cancel</button>
+      <button class="btn-save" onclick="confirmRouteStart()">Start Route</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="bottom-safe"></div>
+
+<script>
+'use strict';
+// ── STATE ──
+// Flat punch log. Clock state and hours are ALWAYS derived from this log,
+// never stored separately — so they can never desync.
+let state = {
+  punches: [],   // [{ id, type, ts, note }] — rstart notes carry the route descriptor
+  nextId: 1,
+  settings: { hourlyRate: 0, otThreshold: 8, otMultiplier: 1.5, showPay: false },
+  lastRouteDesc: ''  // last-used route descriptor, prefilled on the next start
+};
+
+const LS_KEY = 'timeclock_state';
+
+const VALID_TYPES = new Set(['in', 'depart', 'return', 'out', 'rstart', 'rend']);
+
+// The punch cycle: CLOCK IN → DEPART TO ROUTE → RETURN TO P.O. → CLOCK OUT,
+// then extra routes as a secondary option: 4 clocked out today, 5 extra route
+// live, 6 extra route ended today. Stages 4/6 show CLOCK IN again (a new shift
+// is always possible); stages 4/6 also offer "Start a second/third route".
+const STAGES = [
+  { next: 'in',     label: 'CLOCK IN',        cls: '' },
+  { next: 'depart', label: 'DEPART TO ROUTE', cls: 'stage-depart' },
+  { next: 'return', label: 'RETURN TO P.O.',  cls: 'stage-return' },
+  { next: 'out',    label: 'CLOCK OUT',       cls: 'clock-out' },
+  { next: 'in',     label: 'CLOCK IN',        cls: '' },
+  { next: 'rend',   label: 'END ROUTE',       cls: 'stage-return' }, // label set dynamically with ordinal
+  { next: 'in',     label: 'CLOCK IN',        cls: '' }
+];
+const TYPE_LABEL = { in: 'Clock in', depart: 'Depart to route', return: 'Return to P.O.', out: 'Clock out', rstart: 'Route start', rend: 'Route end' };
+const TYPE_TOAST = {
+  in:     ts => '⏱ Clocked in at ' + formatTime(ts),
+  depart: ts => 'Departed to route at ' + formatTime(ts),
+  return: ts => 'Returned to P.O. at ' + formatTime(ts),
+  out:    ts => '✓ Clocked out at ' + formatTime(ts),
+  rstart: ts => 'Route started at ' + formatTime(ts),
+  rend:   ts => 'Route ended at ' + formatTime(ts)
+};
+// Badge text + color class per type (colors reuse the existing palette).
+const BADGE = {
+  in: ['IN', 'in'], out: ['OUT', 'out'],
+  depart: ['DEPART', 'depart'], return: ['RETURN', 'return'],
+  rstart: ['START', 'depart'], rend: ['END', 'return']
+};
+
+// Extra routes are numbered per day starting at 2 (the in-shift route is route 1).
+const ORDINALS = ['First','Second','Third','Fourth','Fifth','Sixth','Seventh','Eighth','Ninth','Tenth'];
+function ordinal(n) { return ORDINALS[n-1] || n + 'th'; }
+function ordinalUpper(n) { return ordinal(n).toUpperCase(); }
+
+function saveState() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  catch(e) { showToast('Could not save — storage full?'); }
+}
+
+// parseFloat + validation in one place: NaN, Infinity, negatives never reach state.
+function numOr(v, fallback, min) {
+  const n = parseFloat(v);
+  return (Number.isFinite(n) && n >= min) ? n : fallback;
+}
+
+function loadState() {
+  let raw = null;
+  try { raw = localStorage.getItem(LS_KEY); } catch(e) { return; }
+  if (!raw) return;
+  let saved;
+  try { saved = JSON.parse(raw); } catch(e) { return; }
+  if (!saved || typeof saved !== 'object') return;
+
+  // Settings: explicit per-key merge with validation (no NaN, no wiped defaults)
+  if (saved.settings && typeof saved.settings === 'object') {
+    state.settings.hourlyRate   = numOr(saved.settings.hourlyRate,   0,   0);
+    state.settings.otThreshold  = numOr(saved.settings.otThreshold,  8,   0);
+    state.settings.otMultiplier = numOr(saved.settings.otMultiplier, 1.5, 1);
+    // Pay estimates are opt-in: anything other than explicit true stays off.
+    state.settings.showPay      = saved.settings.showPay === true;
+  }
+  state.lastRouteDesc = String(saved.lastRouteDesc || '').slice(0, 60);
+
+  const out = [];
+  const push = (p) => {
+    if (!p || !Number.isFinite(p.ts) || !VALID_TYPES.has(p.type)) return;
+    out.push({
+      id:   Number.isFinite(p.id) ? p.id : 0,
+      type: p.type,
+      ts:   p.ts,
+      note: String(p.note || '').slice(0, 300)
+    });
+  };
+  if (Array.isArray(saved.punches)) {
+    saved.punches.forEach(push);
+  } else if (saved.punches && typeof saved.punches === 'object') {
+    // Legacy v1.0 format: { 'YYYY-MM-DD': [...] } — flattened here.
+    // Bonus: pairing is now global, so overnight shifts the old
+    // per-day logic zeroed out are repaired automatically on load.
+    Object.keys(saved.punches).forEach(k => (saved.punches[k] || []).forEach(push));
+  }
+  out.sort((a,b) => a.ts - b.ts);
+  let maxId = 0;
+  out.forEach(p => { if (p.id > maxId) maxId = p.id; });
+  state.nextId = Math.max(numOr(saved.nextId, 1, 1), maxId + 1, 1);
+  const seen = new Set();
+  for (const p of out) {
+    if (!p.id || seen.has(p.id)) p.id = state.nextId++;
+    seen.add(p.id);
+  }
+  state.punches = out;
+}
+
+// ── TIME HELPERS ──
+function dateKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function todayKey() { return dateKey(new Date()); }
+
+// DST-safe: bounds computed via calendar arithmetic, not +86400000.
+function dayBounds(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return [new Date(y, m-1, d).getTime(), new Date(y, m-1, d+1).getTime()];
+}
+
+function formatDateKey(key) {
+  const [y, m, d] = key.split('-');
+  const date = new Date(y, m-1, d);
+  const today = todayKey();
+  const yd = new Date(); yd.setDate(yd.getDate()-1);
+  const yesterday = dateKey(yd);
+  if (key === today) return 'Today';
+  if (key === yesterday) return 'Yesterday';
+  return date.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+}
+
+function formatTime(ts) {
+  const d = new Date(ts);
+  let h = d.getHours(), m = d.getMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+function formatDuration(ms) {
+  const totalMin = Math.round(ms / 60000);
+  if (totalMin < 1) return '<1m';
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+// ── CORE ENGINE ──
+function sortedPunches() {
+  return [...state.punches].sort((a,b) => a.ts - b.ts || a.id - b.id);
+}
+
+// Punches pair into SHIFT segments (in→out) across the WHOLE log, so overnight
+// shifts work. depart/return are markers carried on the open segment.
+// Extra routes pair into ROUTE segments (rstart→rend) — they always live
+// OUTSIDE a shift, because the worker clocks out after route 1 every day.
+// Everything — stage, clock state, hours — derives from this walk. No stored flags.
+function derive() {
+  const segments = [];      // { inP, outP|null, markers: [depart/return…] }
+  const orphanOuts = [];    // OUT with no open shift
+  const orphanMarkers = []; // depart/return with no open shift
+  const routeSegs = [];     // { startP, endP|null } — extra routes (2nd, 3rd, …)
+  const orphanRends = [];   // rend with no open extra route
+  const byPunchId = {};     // punch id → its shift segment
+  const byRoutePunchId = {};// punch id → its route segment
+  let open = null, openR = null;
+  const sorted = sortedPunches();
+  for (const p of sorted) {
+    if (p.type === 'in') {
+      if (open) segments.push(open); // dangling IN keeps its markers → flagged in UI
+      open = { inP: p, outP: null, markers: [] };
+      byPunchId[p.id] = open;
+    } else if (p.type === 'out') {
+      if (open) { open.outP = p; segments.push(open); byPunchId[p.id] = open; open = null; }
+      else orphanOuts.push(p);
+    } else if (p.type === 'depart' || p.type === 'return') {
+      if (open) { open.markers.push(p); byPunchId[p.id] = open; }
+      else orphanMarkers.push(p);
+    } else if (p.type === 'rstart') {
+      if (openR) routeSegs.push(openR); // dangling start → kept, flagged in UI
+      openR = { startP: p, endP: null };
+      byRoutePunchId[p.id] = openR;
+    } else { // rend
+      if (openR) { openR.endP = p; routeSegs.push(openR); byRoutePunchId[p.id] = openR; openR = null; }
+      else orphanRends.push(p);
+    }
+  }
+  if (open) segments.push(open);
+  if (openR) routeSegs.push(openR);
+
+  // Stages: 0 CLOCK IN → 1 DEPART TO ROUTE → 2 RETURN TO P.O. → 3 CLOCK OUT
+  // → 4 clocked out today (may start a 2nd route) → 5 extra route live
+  // → 6 extra route ended today (may start another). An out/rend from a
+  // previous day means the new day starts fresh at stage 0.
+  const last = sorted[sorted.length - 1] || null;
+  const today = todayKey();
+  let stage = 0;
+  if (open) stage = last.type === 'in' ? 1 : last.type === 'depart' ? 2 : 3;
+  else if (openR) stage = 5;
+  else if (last && last.type === 'out' && dateKey(new Date(last.ts)) === today) stage = 4;
+  else if (last && last.type === 'rend' && dateKey(new Date(last.ts)) === today) stage = 6;
+
+  const clockedIn = !!open;
+  return {
+    segments, orphanOuts, orphanMarkers, routeSegs, orphanRends,
+    byPunchId, byRoutePunchId,
+    stage, clockedIn,
+    openP:   clockedIn ? open.inP : null,
+    openSeg: clockedIn ? open : null,
+    openRoute: (!open && openR) ? openR : null
+  };
+}
+
+// Extra-route numbering helpers (per calendar day of the route's start).
+function routeSegsForDay(key, drv) {
+  return drv.routeSegs.filter(s => dateKey(new Date(s.startP.ts)) === key);
+}
+function routeNumberOf(seg, drv) {
+  return routeSegsForDay(dateKey(new Date(seg.startP.ts)), drv).indexOf(seg) + 2;
+}
+function nextRouteNumber(drv) {
+  return routeSegsForDay(todayKey(), drv).length + 2;
+}
+
+function lastMarker(seg, type) {
+  const m = seg.markers.filter(x => x.type === type);
+  return m[m.length - 1] || null;
+}
+
+// Shift intervals [start, end): in→out, or in→now while live.
+function shiftIntervals(drv, now = Date.now()) {
+  const iv = [];
+  for (const seg of drv.segments) {
+    if (seg.outP) iv.push([seg.inP.ts, seg.outP.ts]);
+    else if (seg === drv.openSeg) iv.push([seg.inP.ts, Math.max(now, seg.inP.ts)]);
+    // dangling INs contribute nothing — surfaced as warnings instead
+  }
+  return iv;
+}
+
+// Merge overlapping [start, end) intervals so bad data can never double-count.
+function unionIntervals(iv) {
+  const sorted = iv.filter(([s, e]) => e > s).sort((a, b) => a[0] - b[0]);
+  const out = [];
+  for (const [s, e] of sorted) {
+    const lastIv = out[out.length - 1];
+    if (lastIv && s <= lastIv[1]) lastIv[1] = Math.max(lastIv[1], e);
+    else out.push([s, e]);
+  }
+  return out;
+}
+
+// Extra-route intervals [start, end): rstart→rend, or rstart→now while live.
+// A dangling (superseded) start contributes nothing — flagged instead, same
+// semantics as a dangling clock-in.
+function extraIntervals(drv, now = Date.now()) {
+  const iv = [];
+  for (const rs of drv.routeSegs) {
+    if (rs.endP) iv.push([rs.startP.ts, rs.endP.ts]);
+    else if (rs === drv.openRoute) iv.push([rs.startP.ts, Math.max(now, rs.startP.ts)]);
+  }
+  return iv;
+}
+
+// Route intervals [start, end): depart→return legs, plus extra routes.
+// A dangling depart closes at clock-out (or now, while live) so a forgotten
+// return still counts.
+function routeIntervals(drv, now = Date.now()) {
+  const iv = [];
+  for (const seg of drv.segments) {
+    const segEnd = seg.outP ? seg.outP.ts
+      : (seg === drv.openSeg ? Math.max(now, seg.inP.ts) : null);
+    let openDep = null;
+    for (const m of seg.markers) {
+      if (m.type === 'depart') openDep = m;
+      else if (m.type === 'return' && openDep) { iv.push([openDep.ts, m.ts]); openDep = null; }
+    }
+    if (openDep && segEnd) iv.push([openDep.ts, Math.max(segEnd, openDep.ts)]);
+  }
+  return iv.concat(extraIntervals(drv, now));
+}
+
+function sumMsForDay(key, intervals) {
+  const [start, end] = dayBounds(key);
+  let ms = 0;
+  for (const [s, e] of intervals) {
+    const oS = Math.max(s, start), oE = Math.min(e, end);
+    if (oE > oS) ms += oE - oS;
+  }
+  return ms;
+}
+
+// Hours for a calendar day, splitting segments at midnight:
+// an 11 PM → 7 AM shift counts 1h on day 1 and 7h on day 2.
+// Paid time = shifts + extra routes, unioned (overlaps never pay twice).
+function calcHoursForDay(key, drv, now = Date.now()) {
+  return sumMsForDay(key, unionIntervals([...shiftIntervals(drv, now), ...extraIntervals(drv, now)])) / 3600000;
+}
+
+// Route hours (depart→return legs + extra routes) for a calendar day,
+// same midnight split, unioned against double-counting.
+function calcRouteForDay(key, drv, now = Date.now()) {
+  return sumMsForDay(key, unionIntervals(routeIntervals(drv, now))) / 3600000;
+}
+
+// TOTAL TIME: the clock-in → clock-out span (summed if a day somehow has two
+// shifts), midnight-split per calendar day. Extra routes are NOT included —
+// they're reported separately as the "incl. extra routes" figure.
+function calcShiftForDay(key, drv, now = Date.now()) {
+  return sumMsForDay(key, shiftIntervals(drv, now)) / 3600000;
+}
+
+function calcPayForDay(hours) {
+  const rate = numOr(state.settings.hourlyRate,   0,   0);
+  const ot   = numOr(state.settings.otThreshold,  8,   0);
+  const mult = numOr(state.settings.otMultiplier, 1.5, 1);
+  if (rate === 0) return null;
+  if (hours <= ot) return hours * rate;
+  return ot * rate + (hours - ot) * rate * mult;
+}
+
+// Data-integrity flags for a day: forgotten clock-outs, missing route stages,
+// and punches that don't belong to any shift.
+function dayIssues(key, drv) {
+  const [start, end] = dayBounds(key);
+  const inDay = ts => ts >= start && ts < end;
+  const issues = [];
+  for (const seg of drv.segments) {
+    if (!inDay(seg.inP.ts)) continue;
+    if (!seg.outP) {
+      if (seg !== drv.openSeg) issues.push('Missing clock-out');
+      continue; // live shift: later stages may simply be pending
+    }
+    const depCount = seg.markers.filter(m => m.type === 'depart').length;
+    const retCount = seg.markers.filter(m => m.type === 'return').length;
+    if (depCount === 0) issues.push('No route departure recorded');
+    else if (retCount < depCount) issues.push('No route return recorded');
+    for (let i = 1; i < seg.markers.length; i++) {
+      if (seg.markers[i].type === 'depart' && seg.markers[i-1].type === 'depart') {
+        issues.push('Duplicate route departure');
+        break;
+      }
+    }
+  }
+  for (const p of drv.orphanOuts) if (inDay(p.ts)) issues.push('Clock-out without clock-in');
+  for (const p of drv.orphanMarkers) if (inDay(p.ts)) issues.push('Route entry without clock-in');
+
+  // Extra routes: forgotten end, end without start, overlap with the shift.
+  const shiftIv = shiftIntervals(drv).map(([s, e]) => [s, e]);
+  for (const rs of drv.routeSegs) {
+    if (inDay(rs.startP.ts) && !rs.endP && rs !== drv.openRoute) issues.push('Missing route end');
+    const rsEnd = rs.endP ? rs.endP.ts : (rs === drv.openRoute ? Infinity : null);
+    if (rsEnd && inDay(rs.startP.ts)) {
+      for (const [s, e] of shiftIv) {
+        if (rs.startP.ts < e && rsEnd > s) { issues.push('Extra route overlaps shift'); break; }
+      }
+    }
+  }
+  for (const p of drv.orphanRends) if (inDay(p.ts)) issues.push('Route end without route start');
+  return issues;
+}
+
+// ── DOM HELPER ──
+// All user text goes through textContent — never innerHTML (XSS-safe by construction).
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── LIVE CLOCK ──
+let currentDay = todayKey();
+
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('liveTime').textContent = `${h}:${m}:${s}`;
+  document.getElementById('liveDate').textContent = now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+
+  const drv = derive();
+  // Elapsed ticks from clock-in during a shift, from route start during an extra route.
+  const elapsedBase = drv.openP ? drv.openP.ts : (drv.openRoute ? drv.openRoute.startP.ts : null);
+  if (elapsedBase !== null) {
+    const elapsed = Math.max(0, Date.now() - elapsedBase);
+    const totalSec = Math.floor(elapsed / 1000);
+    const eh = Math.floor(totalSec / 3600);
+    const em = Math.floor((totalSec % 3600) / 60);
+    const es = totalSec % 60;
+    document.getElementById('elapsedTime').textContent =
+      `Elapsed: ${String(eh).padStart(2,'0')}:${String(em).padStart(2,'0')}:${String(es).padStart(2,'0')}`;
+    updateTodaySummary(drv);
+  }
+
+  // Midnight rollover: re-render so hours and lists move to the new day.
+  if (todayKey() !== currentDay) {
+    currentDay = todayKey();
+    renderClockUI();
+    if (document.getElementById('page-history').classList.contains('active')) renderHistory();
+  }
+}
+
+// ── PUNCH ──
+// Shared punch core: double-tap guard, append, persist, re-render.
+function punch(type, toastMsg, note = '') {
+  const now = Date.now();
+  const sorted = sortedPunches();
+  const last = sorted[sorted.length - 1];
+  // Double-tap guard: ignore a punch within 1.5s AFTER the previous one.
+  // (A future-dated previous punch must not block punching forever.)
+  const dt = last ? now - last.ts : Infinity;
+  if (dt >= 0 && dt < 1500) { showToast('Ignored — too soon after the last punch'); return; }
+
+  state.punches.push({ id: state.nextId++, type, ts: now, note });
+  saveState();
+  renderClockUI();
+  showToast(toastMsg || TYPE_TOAST[type](now));
+}
+
+function handlePunch() {
+  const drv = derive();
+  if (drv.stage === 5) {
+    // Ending the live extra route — say which one and how long it ran.
+    const seg = drv.openRoute;
+    const n = routeNumberOf(seg, drv);
+    punch('rend', ordinal(n) + ' route ended (' + formatDuration(Date.now() - seg.startP.ts) + ')');
+    return;
+  }
+  punch(STAGES[drv.stage].next);
+}
+
+// Secondary action below the main button, offered only after clocking out
+// (stage 4) or after ending an extra route (stage 6), same day only:
+// "Start a second route", "Start a third route", …
+// Opens the Route Descriptor prompt first — nothing is logged until confirmed.
+function handleRouteStart() {
+  const drv = derive();
+  if (drv.stage !== 4 && drv.stage !== 6) return;
+  openRouteModal();
+}
+
+// ── ROUTE DESCRIPTOR MODAL ──
+function openRouteModal() {
+  document.getElementById('routeModalTitle').textContent = ordinal(nextRouteNumber(derive())) + ' Route';
+  document.getElementById('routeDesc').value = state.lastRouteDesc || '';
+  document.getElementById('routeModal').classList.add('open');
+  setTimeout(() => document.getElementById('routeDesc').focus(), 50);
+}
+
+function closeRouteModal() {
+  document.getElementById('routeModal').classList.remove('open');
+}
+
+function confirmRouteStart() {
+  const drv = derive();
+  if (drv.stage !== 4 && drv.stage !== 6) { closeRouteModal(); return; }
+  const desc = document.getElementById('routeDesc').value.trim().slice(0, 60);
+  state.lastRouteDesc = desc; // prefilled next time (clearing it clears the prefill)
+  const n = nextRouteNumber(drv);
+  closeRouteModal();
+  // The descriptor is the rstart note → shows on the START row, the block
+  // header chip, the status line, and the CSV notes column.
+  punch('rstart', ordinal(n) + ' route started' + (desc ? ' · ' + desc : ''), desc);
+}
+
+function renderClockUI() {
+  const drv = derive();
+  const btn = document.getElementById('punchBtn');
+  const dot = document.getElementById('statusDot');
+  const label = document.getElementById('statusLabel');
+  const elapsed = document.getElementById('elapsedTime');
+
+  btn.textContent = STAGES[drv.stage].label;
+  btn.className = 'punch-btn' + (STAGES[drv.stage].cls ? ' ' + STAGES[drv.stage].cls : '');
+
+  // "Start a second/third route" link: only after clock-out (or after an
+  // extra route ended) and only while it's still the same day.
+  const startLink = document.getElementById('routeStartBtn');
+  if (drv.stage === 4 || drv.stage === 6) {
+    startLink.textContent = '+ Start a ' + ordinal(nextRouteNumber(drv)).toLowerCase() + ' route';
+    startLink.classList.add('show');
+  } else {
+    startLink.classList.remove('show');
+  }
+
+  if (drv.clockedIn) {
+    dot.classList.add('clocked-in');
+    label.classList.add('clocked-in');
+    if (drv.stage === 1)      label.textContent = 'Clocked in since ' + formatTime(drv.openP.ts);
+    else if (drv.stage === 2) label.textContent = 'On route since ' + formatTime(lastMarker(drv.openSeg, 'depart').ts);
+    else                      label.textContent = 'Back at P.O. since ' + formatTime(lastMarker(drv.openSeg, 'return').ts);
+  } else if (drv.stage === 5) {
+    // Live extra route: green dot, main button ends it.
+    const n = routeNumberOf(drv.openRoute, drv);
+    const desc = drv.openRoute.startP.note;
+    btn.textContent = 'END ' + ordinalUpper(n) + ' ROUTE';
+    dot.classList.add('clocked-in');
+    label.classList.add('clocked-in');
+    label.textContent = 'On ' + ordinal(n).toLowerCase() + ' route' + (desc ? ' (' + desc + ')' : '') +
+      ' since ' + formatTime(drv.openRoute.startP.ts);
+  } else {
+    dot.classList.remove('clocked-in');
+    label.classList.remove('clocked-in');
+    if (drv.stage === 4)      label.textContent = 'Clocked out — start a route, or done for the day';
+    else if (drv.stage === 6) label.textContent = 'Route complete — start another, or done for the day';
+    else                      label.textContent = 'Not clocked in';
+    elapsed.textContent = '';
+  }
+
+  renderTodayPunches(drv);
+  updateTodaySummary(drv);
+}
+
+function updateTodaySummary(drv) {
+  drv = drv || derive();
+  const key = todayKey();
+  const hours = calcHoursForDay(key, drv);
+  const pay = calcPayForDay(hours);
+  // Pay estimate is optional (Settings toggle, off by default) — card hidden when off.
+  document.getElementById('todayPayCard').style.display = state.settings.showPay ? '' : 'none';
+  document.getElementById('todayHours').textContent = hours.toFixed(2);
+  document.getElementById('todayPay').textContent = pay !== null ? '$' + pay.toFixed(2) : '—';
+
+  // TOTAL TIME: clock-in → clock-out span. On days with extra routes, split:
+  // the card keeps the base span, the sub-line adds the inclusive figure.
+  const shiftH = calcShiftForDay(key, drv);
+  const extraMs = sumMsForDay(key, extraIntervals(drv));
+  document.getElementById('todayTotal').textContent = shiftH.toFixed(2);
+  document.getElementById('todayTotalSub').textContent = extraMs > 0
+    ? hours.toFixed(2) + ' incl. extra routes'
+    : 'Clock in → clock out';
+}
+
+// One punch row, built with DOM nodes (no innerHTML → no XSS).
+function punchRow(p, drv, opts = {}) {
+  const div = el('div', 'punch-item');
+  const badge = BADGE[p.type] || [p.type.toUpperCase(), p.type];
+  div.appendChild(el('span', 'punch-type-badge ' + badge[1], badge[0]));
+
+  const mid = el('div');
+  let timeText = formatTime(p.ts);
+  if (opts.carry) timeText += ' · started ' + formatDateKey(dateKey(new Date(p.ts)));
+  mid.appendChild(el('div', 'punch-time', timeText));
+  if (p.note) mid.appendChild(el('div', 'punch-note', p.note));
+  div.appendChild(mid);
+
+  const seg = drv.byPunchId[p.id] || null;
+  const rseg = drv.byRoutePunchId[p.id] || null;
+  let durText = '', durCls = 'punch-duration';
+  if ((drv.openP && p.id === drv.openP.id) || (drv.openRoute && p.id === drv.openRoute.startP.id)) {
+    durText = 'OPEN';
+    durCls += ' open';
+  } else if (p.type === 'out') {
+    if (seg) {
+      durText = formatDuration(seg.outP.ts - seg.inP.ts);
+      const legs = seg.markers.filter(m => m.type === 'depart').length;
+      if (legs) durText += ' · ' + legs + (legs === 1 ? ' route' : ' routes');
+      if (dateKey(new Date(seg.inP.ts)) !== dateKey(new Date(seg.outP.ts))) durText += ' · overnight';
+    } else durText = 'no clock-in';
+  } else if (p.type === 'depart') {
+    if (seg) {
+      // Later legs measure the wait since the previous return ("at P.O.");
+      // the first leg measures from clock-in ("pre-route").
+      const prevRet = seg.markers.filter(m => m.type === 'return' && m.ts < p.ts).pop();
+      durText = prevRet ? formatDuration(p.ts - prevRet.ts) + ' · at P.O.'
+                        : formatDuration(p.ts - seg.inP.ts) + ' · pre-route';
+    } else durText = 'no clock-in';
+  } else if (p.type === 'return') {
+    if (seg) {
+      const deps = seg.markers.filter(m => m.type === 'depart' && m.ts <= p.ts);
+      const dep = deps[deps.length - 1] || null;
+      durText = formatDuration(p.ts - (dep ? dep.ts : seg.inP.ts)) + (dep ? '' : ' · after in');
+    } else durText = 'no clock-in';
+  } else if (p.type === 'rend') {
+    // Duration of the extra route this END closes.
+    if (rseg && rseg.startP.id !== p.id) durText = formatDuration(p.ts - rseg.startP.ts);
+    else if (rseg) durText = '';
+    else durText = 'no route start';
+  }
+  // rstart shows no duration of its own — the block header carries it.
+  if (durText) div.appendChild(el('span', durCls, durText));
+
+  const del = el('button', 'delete-punch', '✕');
+  del.type = 'button';
+  del.setAttribute('aria-label', `Delete ${TYPE_LABEL[p.type].toLowerCase()} at ${formatTime(p.ts)}`);
+  del.addEventListener('click', () => deletePunch(p.id));
+  div.appendChild(del);
+  return div;
+}
+
+// The return a depart pairs with (null if overwritten by a later depart or never closed).
+function matchingReturn(seg, depPunch) {
+  for (const m of seg.markers) {
+    if (m.ts < depPunch.ts || (m.ts === depPunch.ts && m.id <= depPunch.id)) continue;
+    if (m.type === 'depart') return null;
+    if (m.type === 'return') return m;
+  }
+  return null;
+}
+
+// Leg header row: "Route N" chip + leg duration / live state.
+function legHeader(seg, dep, drv, continued) {
+  const div = el('div', 'leg-header');
+  const legNo = seg.markers.filter(m => m.type === 'depart' && m.ts <= dep.ts).length;
+  div.appendChild(el('span', 'leg-chip', 'Route ' + legNo));
+
+  let meta, live = false;
+  const ret = matchingReturn(seg, dep);
+  const liveDep = (drv.stage === 2 && drv.openSeg === seg) ? lastMarker(seg, 'depart') : null;
+  if (ret) meta = formatDuration(ret.ts - dep.ts);
+  else if (liveDep && liveDep.id === dep.id) { meta = 'ON ROUTE'; live = true; }
+  else meta = 'no return';
+  if (continued) meta = 'from ' + formatDateKey(dateKey(new Date(dep.ts))) + ' · ' + meta;
+  div.appendChild(el('span', 'leg-meta' + (live ? ' live' : ''), meta));
+  return div;
+}
+
+// Extra-route header row: green "SECOND ROUTE · Route 22" chip + duration / live state.
+function routeBlockHeader(rseg, sp, drv, continued) {
+  const div = el('div', 'leg-header');
+  const n = routeNumberOf(rseg, drv);
+  div.appendChild(el('span', 'leg-chip route', ordinalUpper(n) + ' ROUTE' + (sp.note ? ' · ' + sp.note : '')));
+
+  let meta, live = false;
+  if (rseg.endP) meta = formatDuration(rseg.endP.ts - sp.ts);
+  else if (drv.openRoute === rseg) { meta = 'ON ROUTE'; live = true; }
+  else meta = 'no end';
+  if (continued) meta = 'from ' + formatDateKey(dateKey(new Date(sp.ts))) + ' · ' + meta;
+  div.appendChild(el('span', 'leg-meta' + (live ? ' live' : ''), meta));
+  return div;
+}
+
+// Renders punches grouped visually: IN, each in-shift leg under a "Route N"
+// header, OUT, then each extra route under a "SECOND/THIRD ROUTE" header.
+function renderGroupedRows(container, items, drv) {
+  let legOpen = false;
+  const listedDeps = new Set();
+  const listedStarts = new Set();
+  let parity = 0;
+  for (const { punch: p, carry } of items) {
+    const seg = drv.byPunchId[p.id];
+    const rseg = drv.byRoutePunchId[p.id];
+    if (seg && p.type === 'depart') {
+      container.appendChild(legHeader(seg, p, drv, false));
+      listedDeps.add(p.id);
+      legOpen = true;
+    } else if (seg && p.type === 'return' && !legOpen) {
+      // Leg started on a previous day — show a continued header.
+      const deps = seg.markers.filter(m => m.type === 'depart' && m.ts <= p.ts);
+      const dep = deps[deps.length - 1];
+      if (dep && !listedDeps.has(dep.id)) container.appendChild(legHeader(seg, dep, drv, true));
+      legOpen = true;
+    } else if (rseg && p.type === 'rstart') {
+      container.appendChild(routeBlockHeader(rseg, p, drv, false));
+      listedStarts.add(p.id);
+      legOpen = true;
+    } else if (rseg && p.type === 'rend' && !legOpen) {
+      // Extra route started on a previous day — continued header.
+      const sp = rseg.startP;
+      if (sp && !listedStarts.has(sp.id)) container.appendChild(routeBlockHeader(rseg, sp, drv, true));
+      legOpen = true;
+    }
+    const row = punchRow(p, drv, { carry });
+    if (legOpen && (p.type === 'depart' || p.type === 'return' || p.type === 'rstart' || p.type === 'rend')) row.classList.add('in-leg');
+    if (parity++ % 2) row.classList.add('alt');
+    container.appendChild(row);
+    if (p.type !== 'depart' && p.type !== 'rstart') legOpen = false; // block closes at its return/end; in/out reset grouping
+  }
+}
+
+// Route legs overlapping a calendar day (for header summaries).
+function countLegsForDay(key, drv) {
+  const [start, end] = dayBounds(key);
+  return routeIntervals(drv).filter(([s, e]) => e > start && s < end).length;
+}
+
+function renderTodayPunches(drv) {
+  const key = todayKey();
+  const punches = sortedPunches().filter(p => dateKey(new Date(p.ts)) === key);
+  const elc = document.getElementById('todayPunches');
+  elc.innerHTML = '';
+
+  // If the open shift (or live extra route) started before today, show it for context.
+  const carry = (drv.openP && dateKey(new Date(drv.openP.ts)) !== key) ? drv.openP
+    : (drv.openRoute && dateKey(new Date(drv.openRoute.startP.ts)) !== key) ? drv.openRoute.startP
+    : null;
+
+  if (!punches.length && !carry) {
+    elc.appendChild(el('div', 'empty-state', 'No punches yet today'));
+    return;
+  }
+  const items = [];
+  if (carry) items.push({ punch: carry, carry: true });
+  for (const p of punches) items.push({ punch: p });
+  renderGroupedRows(elc, items, drv);
+}
+
+// Deletion is by unique id; clock state re-derives automatically on next render.
+function deletePunch(id) {
+  const p = state.punches.find(x => x.id === id);
+  if (!p) return;
+  if (!confirm(`Delete this ${p.type === 'in' ? 'clock-in' : 'clock-out'} (${formatTime(p.ts)})?`)) return;
+  state.punches = state.punches.filter(x => x.id !== id);
+  saveState();
+  renderClockUI();
+  showToast('Punch deleted');
+}
+
+// ── MANUAL PUNCH / ROUTE LEG ──
+let manualMode = 'single';
+
+function setManualMode(mode) {
+  manualMode = mode;
+  document.getElementById('modeSingle').classList.toggle('active', mode === 'single');
+  document.getElementById('modeLeg').classList.toggle('active', mode === 'leg');
+  document.getElementById('modeExtra').classList.toggle('active', mode === 'extra');
+  document.getElementById('singleFields').style.display = mode === 'single' ? '' : 'none';
+  document.getElementById('legFields').style.display = mode === 'leg' ? '' : 'none';
+  document.getElementById('extraFields').style.display = mode === 'extra' ? '' : 'none';
+  document.getElementById('manualModalTitle').textContent =
+    mode === 'single' ? 'Add Manual Punch' : mode === 'leg' ? 'Add Route Leg' : 'Add Extra Route';
+  document.getElementById('manualSaveBtn').textContent =
+    mode === 'single' ? 'Add Punch' : mode === 'leg' ? 'Add Leg' : 'Add Route';
+  // In Extra Route mode the note field IS the route descriptor — same
+  // treatment as the start prompt (lands on the START row + block header).
+  document.getElementById('manualNoteLabel').textContent = mode === 'extra' ? 'Route Descriptor:' : 'Note (optional)';
+  updateManualContext();
+}
+
+function contextLine(drv) {
+  if (drv.stage === 5) return 'Currently: on ' + ordinal(routeNumberOf(drv.openRoute, drv)).toLowerCase() +
+    ' route since ' + formatTime(drv.openRoute.startP.ts);
+  if (drv.stage === 4) return 'Currently: clocked out — can start a second route';
+  if (drv.stage === 6) return 'Currently: ' + ordinal(nextRouteNumber(drv) - 1).toLowerCase() +
+    ' route done — can start another';
+  if (!drv.clockedIn) return 'Currently: not clocked in';
+  if (drv.stage === 1) return 'Currently: clocked in since ' + formatTime(drv.openP.ts);
+  if (drv.stage === 2) return 'Currently: on route since ' + formatTime(lastMarker(drv.openSeg, 'depart').ts);
+  return 'Currently: back at P.O. — clock out next';
+}
+
+// Context line under the toggle: live flow state for today, day summary for past dates.
+function updateManualContext() {
+  const date = document.getElementById('manualDate').value;
+  const elc = document.getElementById('manualContext');
+  const drv = derive();
+  if (!date || date === todayKey()) { elc.textContent = contextLine(drv); return; }
+  const dayPunches = sortedPunches().filter(p => dateKey(new Date(p.ts)) === date);
+  if (!dayPunches.length) { elc.textContent = formatDateKey(date) + ': no punches yet'; return; }
+  const legs = countLegsForDay(date, drv);
+  elc.textContent = formatDateKey(date) + ': ' + calcHoursForDay(date, drv).toFixed(2) +
+    ' hrs · ' + legs + (legs === 1 ? ' route' : ' routes');
+}
+
+function openManualModal() {
+  const today = new Date();
+  const nowTime = `${String(today.getHours()).padStart(2,'0')}:${String(today.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('manualDate').value = todayKey();
+  document.getElementById('manualTime').value = nowTime;
+  document.getElementById('legDepart').value = '';
+  document.getElementById('legReturn').value = '';
+  document.getElementById('extraStart').value = '';
+  document.getElementById('extraEnd').value = '';
+  document.getElementById('manualNote').value = '';
+  // Smart default: preselect the type the flow expects next.
+  document.getElementById('manualType').value = STAGES[derive().stage].next;
+  setManualMode('single');
+  document.getElementById('manualModal').classList.add('open');
+  setTimeout(() => document.getElementById('manualTime').focus(), 50);
+}
+
+function closeManualModal() {
+  document.getElementById('manualModal').classList.remove('open');
+}
+
+function saveManualPunch() {
+  const date = document.getElementById('manualDate').value;
+  const note = document.getElementById('manualNote').value.trim().slice(0, 300);
+  if (!date) { showToast('Please fill in date'); return; }
+  const [y, mo, d] = date.split('-').map(Number);
+
+  const mkTs = (time) => {
+    if (!time) return null;
+    const [h, m] = time.split(':').map(Number);
+    const ts = new Date(y, mo-1, d, h, m, 0).getTime();
+    return Number.isFinite(ts) ? ts : null;
+  };
+
+  if (manualMode === 'leg') {
+    // A complete route leg in one submission — matched depart + return,
+    // so backfilling a forgotten extra route can't create orphan entries.
+    const depTs = mkTs(document.getElementById('legDepart').value);
+    const retTs = mkTs(document.getElementById('legReturn').value);
+    if (!depTs || !retTs) { showToast('Please fill in both leg times'); return; }
+    if (retTs <= depTs) { showToast('Return must be after depart'); return; }
+    if (retTs > Date.now() + 60000) { showToast('Future punches are not allowed'); return; }
+    state.punches.push({ id: state.nextId++, type: 'depart', ts: depTs, note });
+    state.punches.push({ id: state.nextId++, type: 'return', ts: retTs, note: '' });
+    saveState();
+    closeManualModal();
+    renderClockUI();
+    if (document.getElementById('page-history').classList.contains('active')) renderHistory();
+    // A leg outside any shift that day is kept but flagged — say so.
+    const orphan = derive().orphanMarkers.some(p => p.ts === depTs || p.ts === retTs);
+    showToast(orphan ? 'Leg added — outside any shift that day (flagged)'
+                     : 'Route leg added (' + formatDuration(retTs - depTs) + ')');
+    return;
+  }
+
+  if (manualMode === 'extra') {
+    // A complete extra route in one submission — matched start + end,
+    // numbered automatically (second, third, …) for that day.
+    const startTs = mkTs(document.getElementById('extraStart').value);
+    const endTs = mkTs(document.getElementById('extraEnd').value);
+    if (!startTs || !endTs) { showToast('Please fill in both route times'); return; }
+    if (endTs <= startTs) { showToast('Route end must be after route start'); return; }
+    if (endTs > Date.now() + 60000) { showToast('Future punches are not allowed'); return; }
+    state.punches.push({ id: state.nextId++, type: 'rstart', ts: startTs, note });
+    state.punches.push({ id: state.nextId++, type: 'rend', ts: endTs, note: '' });
+    saveState();
+    closeManualModal();
+    renderClockUI();
+    if (document.getElementById('page-history').classList.contains('active')) renderHistory();
+    const n = routeSegsForDay(date, derive()).length + 1;
+    showToast(ordinal(n) + ' route added (' + formatDuration(endTs - startTs) + ')');
+    return;
+  }
+
+  const type = document.getElementById('manualType').value;
+  const time = document.getElementById('manualTime').value;
+  if (!time) { showToast('Please fill in time'); return; }
+  const ts = mkTs(time);
+  if (ts === null) { showToast('Invalid date or time'); return; }
+  if (ts > Date.now() + 60000) { showToast('Future punches are not allowed'); return; }
+
+  const t = VALID_TYPES.has(type) ? type : 'in';
+  state.punches.push({ id: state.nextId++, type: t, ts, note });
+  // Clock state re-derives from the log: a manual IN starts a live shift,
+  // a manual OUT closes one — no more desync.
+  saveState();
+  closeManualModal();
+  renderClockUI();
+  if (document.getElementById('page-history').classList.contains('active')) renderHistory();
+  showToast('Manual ' + TYPE_LABEL[t].toLowerCase() + ' added');
+}
+
+// ── HISTORY ──
+function renderHistory() {
+  const drv = derive();
+  const elc = document.getElementById('historyContent');
+  elc.innerHTML = '';
+
+  const keysSet = new Set(state.punches.map(p => dateKey(new Date(p.ts))));
+  // Today can have hours (from a carried-over open shift or route) before it has punches.
+  if ((drv.openP || drv.openRoute) && calcHoursForDay(todayKey(), drv) > 0) keysSet.add(todayKey());
+  const keys = [...keysSet].sort().reverse();
+
+  if (keys.length === 0) {
+    elc.appendChild(el('div', 'empty-state', 'No history yet'));
+    return;
+  }
+
+  for (const key of keys) {
+    const punches = sortedPunches().filter(p => dateKey(new Date(p.ts)) === key);
+    const carrySrc = drv.openP || (drv.openRoute ? drv.openRoute.startP : null);
+    const carry = (key === todayKey() && carrySrc && !punches.some(p => p.id === carrySrc.id)) ? carrySrc : null;
+
+    const hours = calcHoursForDay(key, drv);
+    const routeH = calcRouteForDay(key, drv);
+    const pay = calcPayForDay(hours);
+    const issues = dayIssues(key, drv);
+
+    const section = el('div', 'history-day');
+    const header = el('div', 'history-day-header');
+    const left = el('div');
+    left.appendChild(el('div', 'history-day-label', formatDateKey(key)));
+    left.appendChild(el('div', 'history-day-hours', hours.toFixed(2) + ' hrs'));
+    if (routeH > 0) {
+      const n = countLegsForDay(key, drv);
+      left.appendChild(el('div', 'history-day-routes',
+        n + (n === 1 ? ' route' : ' routes') + ' · ' + routeH.toFixed(2) + ' route hrs'));
+    }
+    for (const iss of issues) left.appendChild(el('span', 'warn-badge', '⚠ ' + iss));
+    header.appendChild(left);
+    if (state.settings.showPay) {
+      header.appendChild(el('div', 'history-day-pay', pay !== null ? '$' + pay.toFixed(2) : '—'));
+    }
+    section.appendChild(header);
+
+    const card = el('div', 'history-card');
+    const items = [];
+    if (carry) items.push({ punch: carry, carry: true });
+    for (const p of punches) items.push({ punch: p });
+    if (!items.length) card.appendChild(el('div', 'empty-state', 'No punches recorded'));
+    else renderGroupedRows(card, items, drv);
+    section.appendChild(card);
+    elc.appendChild(section);
+  }
+}
+
+// ── SETTINGS ──
+function loadSettings() {
+  document.getElementById('showPay').checked = state.settings.showPay === true;
+  document.getElementById('hourlyRate').value = state.settings.hourlyRate || '';
+  document.getElementById('otThreshold').value = state.settings.otThreshold;
+  document.getElementById('otMultiplier').value = state.settings.otMultiplier;
+}
+
+function saveSettings() {
+  state.settings.showPay      = document.getElementById('showPay').checked === true;
+  state.settings.hourlyRate   = numOr(document.getElementById('hourlyRate').value,   0,   0);
+  state.settings.otThreshold  = numOr(document.getElementById('otThreshold').value,  8,   0);
+  state.settings.otMultiplier = numOr(document.getElementById('otMultiplier').value, 1.5, 1);
+  saveState();
+  updateTodaySummary();
+  if (document.getElementById('page-history').classList.contains('active')) renderHistory();
+  showToast('Settings saved');
+}
+
+function clearAllData() {
+  if (!confirm('Clear ALL punch data? This cannot be undone.')) return;
+  state.punches = [];
+  saveState();
+  renderClockUI();
+  renderHistory();
+  showToast('All data cleared');
+}
+
+// ── CSV EXPORT ──
+function csvCell(v) {
+  v = String(v);
+  return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+
+function exportCSV() {
+  const drv = derive();
+  const keysSet = new Set(state.punches.map(p => dateKey(new Date(p.ts))));
+  if (drv.openP && calcHoursForDay(todayKey(), drv) > 0) keysSet.add(todayKey());
+  const keys = [...keysSet].sort();
+  if (!keys.length) { showToast('No data to export'); return; }
+
+  const rate = numOr(state.settings.hourlyRate, 0, 0);
+  const ot = numOr(state.settings.otThreshold, 8, 0);
+
+  const rows = [['Date','Hours','Route Hours','Regular Hours','OT Hours','Hourly Rate','Est Pay','Punches','Notes','Flags']];
+  for (const key of keys) {
+    const h = calcHoursForDay(key, drv);
+    const routeH = calcRouteForDay(key, drv);
+    const reg = Math.min(h, ot);
+    const otH = Math.max(0, h - ot);
+    const pay = calcPayForDay(h);
+    const dayPunches = sortedPunches().filter(p => dateKey(new Date(p.ts)) === key);
+    const plist = dayPunches.map(p => `${TYPE_LABEL[p.type].toUpperCase()} ${formatTime(p.ts)}`).join('; ');
+    const notes = dayPunches.map(p => p.note).filter(Boolean).join('; ');
+    rows.push([
+      key,
+      h.toFixed(2),
+      routeH.toFixed(2),
+      reg.toFixed(2),
+      otH.toFixed(2),
+      rate ? rate.toFixed(2) : '',
+      pay !== null ? pay.toFixed(2) : '',
+      plist,
+      notes,
+      dayIssues(key, drv).join('; ')
+    ]);
+  }
+
+  const csv = rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'timeclock-export-' + todayKey() + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  showToast('CSV exported');
+}
+
+// ── TABS ──
+function switchTab(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+  document.getElementById('page-' + name).classList.add('active');
+  const tab = document.getElementById('tab-' + name);
+  tab.classList.add('active');
+  tab.setAttribute('aria-selected', 'true');
+  if (name === 'history') renderHistory();
+}
+
+// ── INIT ──
+loadState();
+loadSettings();
+renderClockUI();
+setInterval(updateClock, 1000);
+updateClock();
+
+// Close modal on backdrop tap or Escape
+document.getElementById('manualModal').addEventListener('click', function(e) {
+  if (e.target === this) closeManualModal();
+});
+document.getElementById('routeModal').addEventListener('click', function(e) {
+  if (e.target === this) closeRouteModal();
+});
+document.getElementById('routeDesc').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') confirmRouteStart();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { closeManualModal(); closeRouteModal(); }
+});
+</script>
+</body>
+</html>
