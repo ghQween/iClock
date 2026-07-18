@@ -1,2 +1,2 @@
-# iClock
+# iClock (beta/testing)
 Mobile Time Clock
