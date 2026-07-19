@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- iOS turns bare numbers (punch times, hours, rates) into tap-to-call links
+     inside text nodes; disabling that keeps the timesheet readable. -->
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#004B87">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -127,6 +131,19 @@
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     transition: background 0.2s;
+    /* The visible chip stays 36px, but the tappable box is padded out to 44px
+       and pulled back with a negative margin so the header keeps its height.
+       position:relative + the ::before below is what actually enlarges the
+       target, since padding would stretch the visible border. */
+    position: relative;
+  }
+  /* Invisible 44x44 hit area centred on the button. */
+  .settings-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 44px; height: 44px;
+    transform: translate(-50%, -50%);
   }
   .settings-btn:active { background: rgba(255,255,255,0.25); }
   /* Solid gear, 45% opaque as requested. */
@@ -142,6 +159,13 @@
   .tab {
     flex: 1;
     padding: 9.9px 8px; /* 10% more compact (was 11px) */
+    /* Tabs are full-width so horizontally generous, but ~36px tall. min-height
+       brings them to the 44px touch minimum without changing the type scale;
+       the flex centring keeps the label optically where it was. */
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: none;
     border: none;
     border-bottom: 3px solid transparent;
@@ -280,7 +304,13 @@
   .route-start-btn {
     display: none;
     width: 100%;
-    margin: -6px 0 14px;
+    /* Was margin-top: -6px, which pulled this button up over the main punch
+       button's bottom 6px. Both are interactive and this one is the later
+       sibling, so it captured taps meant for CLOCK IN/OUT along that edge.
+       Zero top margin removes the overlap; the punch button's own 14px
+       margin-bottom now supplies the gap, so this one pulls back to 8px of
+       its own to keep the original spacing below. */
+    margin: 0 0 8px;
     padding: 10px;
     background: none;
     border: none;
@@ -436,11 +466,34 @@
     font-size: 15px;
     cursor: pointer;
     padding: 9px;
-    min-width: 36px;
+    min-width: 44px;
     min-height: 36px;
     border-radius: 4px;
     line-height: 1;
     transition: color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    /* Anchor for the hit area below. */
+    position: relative;
+  }
+  /* Apple's comfortable touch target is 44pt, but a punch row is only ~39px
+     tall. An earlier attempt grew the BUTTON to 44px with a negative margin,
+     which made each button's box overhang its row by ~2.6px top and bottom —
+     in a stacked list the next row's button then covered the previous one's
+     bottom edge, and since later siblings paint on top, those taps silently
+     went to the wrong (or no) row. Expanding a pseudo-element horizontally
+     instead keeps every hit area inside its own row: the ✕ column is at the
+     end of the row with only padding beside it, so widening costs nothing and
+     overlaps nothing. */
+  .delete-punch::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -8px;
+    right: -6px;
   }
   .delete-punch:active { color: var(--red); }
 
@@ -786,6 +839,12 @@
     color: var(--muted);
     line-height: 1.4;
     margin: -6px 2px 16px;
+    /* The -6px top margin tucks the caption under its button, which means it
+       physically overlaps that button's bottom 6px. As a later sibling it
+       would win those taps — a thin dead strip along the bottom edge of every
+       Settings button. It is pure static text, so it never needs pointer
+       events of its own. */
+    pointer-events: none;
   }
 
   .version-note {
@@ -813,16 +872,127 @@
     opacity: 0;
     transition: opacity 0.3s, transform 0.3s;
     pointer-events: none;
-    white-space: nowrap;
+    /* Was `nowrap` + ellipsis, which silently truncated longer messages on
+       narrow phones — the tail of a warning is exactly the part that matters.
+       Wrapping to at most two lines keeps the full text readable instead. */
+    white-space: normal;
+    text-align: center;
+    line-height: 1.3;
     z-index: 300;
     box-shadow: 0 4px 16px rgba(0,0,0,0.25);
     max-width: 92vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    width: max-content;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+  /* Add-to-Home-Screen hint. Shown once, only in a Safari tab on iOS, because
+     an installed PWA gets materially better storage treatment than a tab:
+     Safari's ITP clears tab storage for origins unvisited for 7 days, and
+     navigator.storage.persist() is far more likely to be granted once
+     installed. This is the single highest-value thing a user can do to keep
+     their punch log, so it earns a first-run banner. */
+  .install-hint {
+    background: #E8F1FA;
+    border: 1px solid #A8C4E0;
+    border-left: 4px solid var(--blue);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+  }
+  .install-hint-text {
+    font-family: var(--cond);
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.45;
+    color: #1F3B57;
+    letter-spacing: 0.01em;
+  }
+  /* Inline share glyph. Sized in em so it tracks the surrounding type, and
+     nudged down 0.12em because the icon's optical centre sits above the text
+     baseline — without it the box appears to float. Stroke-based so it stays
+     crisp at this size and inherits the paragraph colour. */
+  .share-glyph {
+    width: 1.05em;
+    height: 1.05em;
+    vertical-align: -0.12em;
+    margin: 0 0.16em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .install-hint-dismiss {
+    margin-top: 10px;
+    min-height: 44px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--blue);
+    border-radius: 5px;
+    background: #fff;
+    color: var(--blue);
+    font-family: var(--cond);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .install-hint-dismiss:active { background: #E8F1FA; }
+
+  /* "(under development)" marker under a section title. Both hosts already
+     carry their own margin-bottom, so this pulls up beneath the title and
+     restores the original gap below — the surrounding layout is unchanged.
+     Uses --red rather than a bespoke colour so it tracks the app's palette. */
+  .dev-note {
+    font-family: var(--cond);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: lowercase;
+    color: var(--red);
+    /* Static text pulled up under its title by a negative margin, so it
+       physically overlaps the element above. Both hosts are non-interactive
+       headings today, but this guarantees the note can never swallow a tap if
+       either section is restructured later. */
+    pointer-events: none;
+  }
+  /* Under the 20px modal title (margin-bottom: 20px). */
+  #manualDevNote { margin: -16px 0 20px; }
+  /* Under the 13px settings heading (margin-bottom: 14px). */
+  #payDevNote { margin: -10px 0 14px; }
+
   .bottom-safe { height: env(safe-area-inset-bottom, 20px); }
+
+  /* Backup reminder. Hidden by default; shown only when the log holds punches
+     and no recent backup exists. iOS Safari clears site data for origins the
+     user hasn't visited in 7 days, so this has to be visible on the page the
+     worker actually opens, not buried in Settings. */
+  .backup-nudge {
+    display: none;
+    width: 100%;
+    margin-top: 10px;
+    padding: 11px 12px;
+    /* Tappable (it jumps to Settings), so it holds the 44px minimum even when
+       the text wraps to a single line. */
+    min-height: 44px;
+    border: 1px solid #E0A800;
+    border-left: 4px solid #E0A800;
+    border-radius: 6px;
+    background: #FFF8E5;
+    color: #6B5200;
+    font-family: var(--cond);
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-align: left;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .backup-nudge.show { display: block; }
 </style>
 </head>
 <body>
@@ -832,7 +1002,7 @@
     <div class="logo">
       <span class="logo-eagle" aria-hidden="true">🦅</span>
       <div class="logo-text">
-        <span class="logo-main"><span style="text-transform:lowercase;">i</span>Clock <span style="font-size:10.4px;font-weight:400;text-transform:lowercase;color:#ABABAB;opacity:1;">(beta 2)</span></span>
+        <span class="logo-main"><span style="text-transform:lowercase;">i</span>Clock <span style="font-size:10.4px;font-weight:400;text-transform:lowercase;color:#ABABAB;opacity:1;">(beta 3)</span></span>
         <span class="logo-sub" id="logoSub">Mobile Time Clock</span>
       </div>
     </div>
@@ -850,6 +1020,23 @@
 <!-- ══ CLOCK PAGE ══ -->
 <div class="page active" id="page-clock">
 
+  <div class="install-hint" id="installHint" hidden>
+    <div class="install-hint-text">
+      <span id="installHintPre"></span><!--
+      iOS share glyph: a box with an arrow rising out of the top. Inline SVG
+      rather than a text approximation so it matches what the user is actually
+      looking for in the Safari toolbar. aria-hidden because the surrounding
+      sentence already names the button; a screen reader should not announce
+      a second, wordless "image" mid-clause.
+   --><svg class="share-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 3.5 L12 14.5" />
+        <path d="M8.4 7.1 L12 3.5 L15.6 7.1" />
+        <path d="M7.2 10.6 H5.6 A1.6 1.6 0 0 0 4 12.2 V19 A1.6 1.6 0 0 0 5.6 20.6 H18.4 A1.6 1.6 0 0 0 20 19 V12.2 A1.6 1.6 0 0 0 18.4 10.6 H16.8" />
+      </svg><span id="installHintPost"></span>
+    </div>
+    <button type="button" class="install-hint-dismiss" id="installHintDismiss" onclick="dismissInstallHint()">Got it</button>
+  </div>
+
   <div class="clock-face">
     <div class="live-time" id="liveTime">--:--:--</div>
     <div class="live-date" id="liveDate">--</div>
@@ -862,6 +1049,8 @@
 
   <button class="punch-btn" id="punchBtn" onclick="handlePunch()">CLOCK IN</button>
   <button type="button" class="route-start-btn" id="routeStartBtn" onclick="handleRouteStart()">+ Start a second route</button>
+
+  <button type="button" class="backup-nudge" id="backupNudge" onclick="switchTab('settings')"></button>
 
   <div class="section-label" id="lblTodaySummary">Today's Summary</div>
   <div class="summary-grid">
@@ -919,6 +1108,7 @@
 
   <div class="settings-card">
     <h3 id="lblPayCard">Pay Settings</h3>
+    <div class="dev-note" id="payDevNote">(under development)</div>
     <div class="settings-row">
       <label for="showPay" id="lblShowPay">Show pay estimates</label>
       <input type="checkbox" id="showPay" onchange="saveSettings()">
@@ -949,13 +1139,14 @@
     <button class="clear-btn" id="btnClear" onclick="openEraseModal()">Erase All Data</button>
   </div>
 
-  <div class="version-note">iClock (beta2.0720.26)</div>
+  <div class="version-note">iClock (beta3.0720.26)</div>
 </div>
 
 <!-- ══ MANUAL PUNCH MODAL ══ -->
 <div class="modal-overlay" id="manualModal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="manualModalTitle">
     <div class="modal-title" id="manualModalTitle">Add Manual Punch</div>
+    <div class="dev-note" id="manualDevNote">(under development)</div>
 
     <div class="mode-toggle" role="tablist">
       <button type="button" class="mode-btn active" id="modeSingle" onclick="setManualMode('single')">Single Punch</button>
@@ -1068,7 +1259,8 @@ let state = {
   nextId: 1,
   settings: { hourlyRate: 18, otThreshold: 8, otMultiplier: 1.5, showPay: false, language: 'en', timeFormat: '24' },
   lastRouteDesc: '',  // last-used route descriptor, prefilled on the next start
-  lastBackupTs: null  // when Export Backup last ran — powers the "back up your data" nudge
+  lastBackupTs: null, // when Export Backup last ran — powers the "back up your data" nudge
+  installHintSeen: false // the Add-to-Home-Screen hint is shown once, then dismissed for good
 };
 
 const LS_KEY = 'timeclock_state';
@@ -1106,6 +1298,12 @@ const TYPE_TOAST = {
 // All UI strings live here, keyed, in English and Spanish. t(key) resolves
 // against the current language; entries that embed values are functions.
 // (CSV export deliberately stays English — payroll tools read those headers.)
+// Capitalises the first character of a value that may not be a string.
+// Used by the Spanish pack, whose sentences start with an ordinal.
+function capFirst(v) {
+  const str = String(v == null ? '' : v);
+  return str ? str[0].toUpperCase() + str.slice(1) : str;
+}
 const I18N = {
   en: {
     logoSub: 'Mobile Time Clock',
@@ -1113,6 +1311,7 @@ const I18N = {
     stageClockIn: 'CLOCK IN', stageDepart: 'DEPART TO ROUTE', stageReturn: 'RETURN TO P.O.', stageClockOut: 'CLOCK OUT',
     endRoute: n => 'END ' + n + ' ROUTE',
     startRouteLink: n => '+ Start a ' + n + ' route',
+    endRouteLink: n => 'End the ' + n + ' route',
     notClockedIn: 'Not clocked in',
     clockedInSince: t => 'Clocked in since ' + t,
     onRouteSince: t => 'On route since ' + t,
@@ -1130,6 +1329,7 @@ const I18N = {
     today: 'Today', yesterday: 'Yesterday',
     prefsCard: 'Preferences', lblLanguage: 'Language', lblTimeFormat: 'Time Format',
     fmt12: '12-hour', fmt24: '24-hour',
+    devNote: '(under development)',
     payCard: 'Pay Settings', showPay: 'Show pay estimates', hourlyRate: 'Hourly Rate ($)',
     otThreshold: 'Overtime after (hrs/day)', otMultiplier: 'Overtime Multiplier',
     dataCard: 'Data', exportCSV: 'Download Hours (Excel)', clearAll: 'Erase All Data',
@@ -1138,6 +1338,7 @@ const I18N = {
     capImportBackup: 'Load a backup you saved before.',
     capExportCSV: 'A spreadsheet of your hours, for payroll or printing.',
     backupExported: 'Backup saved', backupImported: 'Backup restored',
+    backupCancelled: 'Backup cancelled — nothing was saved',
     invalidBackup: "That file isn't a valid iClock backup",
     confirmImport: 'Restore from this backup? This replaces all current data.',
     modeSingle: 'Single Punch', modeLeg: 'Route Leg', modeExtra: 'Extra Route',
@@ -1167,6 +1368,12 @@ const I18N = {
     routeEnded: (n, dur) => n + ' route ended (' + dur + ')',
     manualAdded: l => 'Manual ' + l + ' added',
     extraAdded: (n, dur) => n + ' route added (' + dur + ')',
+    // Shown instead of extraAdded when a backdated route is inserted ahead of
+    // existing ones, which shifts their numbers up. Routes are numbered by
+    // chronological position, so this is expected — but silent renumbering
+    // would contradict a number the user already saw in History.
+    extraAddedRenumbered: (n, dur, c) => n + ' route added (' + dur + ') · ' +
+      c + ' route' + (c === 1 ? '' : 's') + ' renumbered',
     legAdded: dur => 'Route leg added (' + dur + ')',
     legAddedOrphan: 'Leg added — outside any shift that day (flagged)',
     fillDate: 'Please fill in date', fillBothLeg: 'Please fill in both leg times',
@@ -1176,12 +1383,30 @@ const I18N = {
     tooSoon: 'Ignored — too soon after the last punch', storageFull: 'Could not save — storage full?',
     punchDeleted: 'Punch deleted',
     confirmDelete: (what, t) => 'Delete this ' + what + ' (' + t + ')?',
-    clockInWord: 'clock-in', clockOutWord: 'clock-out',
+    // One noun per punch type. Replaces clockInWord/clockOutWord, which forced
+    // a two-way ternary that described depart/return/rstart/rend as
+    // "clock-out" — mislabeling five of six types in the app's only
+    // destructive confirmation. Also drives the delete button's aria-label,
+    // so screen readers and the visible dialog agree in both languages.
+    deleteWord: {
+      in: 'clock-in', out: 'clock-out',
+      depart: 'route departure', return: 'return to P.O.',
+      rstart: 'route start', rend: 'route end'
+    },
+    deleteWordFallback: 'punch',
+    deleteAria: (what, t) => 'Delete ' + what + ' at ' + t,
     settingsSaved: 'Settings saved',
     eraseModalTitle: 'Erase All Data?',
     eraseWarningText: ['This deletes every punch, route, and note on device.', "There's no way to undo."],
     eraseBackupFirstBtn: 'Save a Backup First',
     eraseConfirmBtn: 'Erase Everything',
+    // Split either side of the inline share glyph, which is real SVG in the
+    // markup rather than a character in the string.
+    installHintPre: 'Tip: add iClock to your Home Screen. Tap the Share button',
+    installHintPost: ' at the bottom of Safari, then "Add to Home Screen". Safari can erase a website\u2019s saved data, but an installed app keeps your punches safely.',
+    installHintDismiss: 'Got it',
+    nudgeNever: '⚠ No backup yet — tap to save one. Safari can clear this app\u2019s data.',
+    nudgeStale: n => `⚠ Last backup ${n} day${n === 1 ? '' : 's'} ago — tap to save a new one.`,
     eraseBackupNever: "⚠ You've never saved a backup.",
     eraseBackupStale: n => `⚠ Your last backup was ${n} day${n === 1 ? '' : 's'} ago.`,
     eraseBackupOk: n => n === 0 ? '✓ Backed up today.' : `✓ Backed up ${n} day${n === 1 ? '' : 's'} ago.`,
@@ -1196,10 +1421,13 @@ const I18N = {
     routeBlockChip: n => n + ' ROUTE',
     issMissingOut: 'Missing clock-out', issNoDepart: 'No route departure recorded',
     issNoReturn: 'No route return recorded', issDupDepart: 'Duplicate route departure',
+    issDupReturn: 'Duplicate route return',
     issOutNoIn: 'Clock-out without clock-in', issMarkerNoIn: 'Route entry without clock-in',
     issMissingEnd: 'Missing route end', issOverlap: 'Extra route overlaps shift',
     issRendNoStart: 'Route end without route start',
-    issOpenCarryover: 'Still open from a previous clock-in/route start'
+    issOpenCarryover: 'Still open from a previous clock-in/route start',
+    issSpanCarryover: 'Full 24h counted — inside a multi-day shift/route',
+    issSpanCapped: 'Spans over a year — later days not listed; split this entry and re-export'
   },
   es: {
     logoSub: 'Reloj Ponchador Móvil',
@@ -1207,6 +1435,7 @@ const I18N = {
     stageClockIn: 'MARCAR ENTRADA', stageDepart: 'IR A RUTA', stageReturn: 'VOLVER A LA OFICINA', stageClockOut: 'MARCAR SALIDA',
     endRoute: n => 'TERMINAR ' + n + ' RUTA',
     startRouteLink: n => '+ Comenzar una ' + n + ' ruta',
+    endRouteLink: n => 'Terminar la ' + n + ' ruta',
     notClockedIn: 'Sin marcar',
     clockedInSince: t => 'Marcado desde ' + t,
     onRouteSince: t => 'En ruta desde ' + t,
@@ -1224,6 +1453,7 @@ const I18N = {
     today: 'Hoy', yesterday: 'Ayer',
     prefsCard: 'Preferencias', lblLanguage: 'Idioma', lblTimeFormat: 'Formato de Hora',
     fmt12: '12 horas', fmt24: '24 horas',
+    devNote: '(en desarrollo)',
     payCard: 'Ajustes de Pago', showPay: 'Mostrar pago estimado', hourlyRate: 'Tarifa por Hora ($)',
     otThreshold: 'Horas extra después de (h/día)', otMultiplier: 'Multiplicador de Horas Extra',
     dataCard: 'Datos', exportCSV: 'Descargar Horas (Excel)', clearAll: 'Borrar Todo',
@@ -1232,6 +1462,7 @@ const I18N = {
     capImportBackup: 'Carga un respaldo que guardaste antes.',
     capExportCSV: 'Una hoja de cálculo de tus horas, para nómina o para imprimir.',
     backupExported: 'Respaldo guardado', backupImported: 'Respaldo restaurado',
+    backupCancelled: 'Respaldo cancelado — no se guardó nada',
     invalidBackup: 'Ese archivo no es un respaldo válido de iClock',
     confirmImport: '¿Restaurar este respaldo? Esto reemplaza todos los datos actuales.',
     modeSingle: 'Ponche Único', modeLeg: 'Tramo de Ruta', modeExtra: 'Ruta Extra',
@@ -1252,15 +1483,22 @@ const I18N = {
     ctxExtraDone: n => 'Ahora: ' + n + ' ruta terminada — puedes empezar otra',
     ctxNoPunches: ': sin ponches',
     ctxDaySummary: (d, h, n) => d + ': ' + h + ' h · ' + n + (n === 1 ? ' ruta' : ' rutas'),
-    routeModalTitle: n => 'Ruta ' + n,
+    // Ordinals precede the noun in Spanish: "Segunda Ruta", not "Ruta Segunda".
+    routeModalTitle: n => n + ' Ruta',
     routeDescPlaceholder: 'p. ej. Ruta 22', notePlaceholder: 'p. ej. Ajuste de ruta abierta',
     toastIn: t => '⏱ Entrada marcada a las ' + t, toastDepart: t => 'Salida a ruta a las ' + t,
     toastReturn: t => 'Regreso a la oficina a las ' + t, toastOut: t => '✓ Salida marcada a las ' + t,
     toastRstart: t => 'Ruta empezó a las ' + t, toastRend: t => 'Ruta terminó a las ' + t,
-    routeStarted: (n, desc) => n[0].toUpperCase() + n.slice(1) + ' ruta empezada' + (desc ? ' · ' + desc : ''),
-    routeEnded: (n, dur) => n[0].toUpperCase() + n.slice(1) + ' ruta terminada (' + dur + ')',
+    // capFirst, not n[0].toUpperCase(): these receive ordinal(), which returns
+    // a numeric-suffix string ("11ª") past the tenth route. Indexing a value
+    // that isn't a non-empty string would throw inside a toast.
+    routeStarted: (n, desc) => capFirst(n) + ' ruta empezada' + (desc ? ' · ' + desc : ''),
+    routeEnded: (n, dur) => capFirst(n) + ' ruta terminada (' + dur + ')',
     manualAdded: () => 'Ponche manual agregado',
-    extraAdded: (n, dur) => n[0].toUpperCase() + n.slice(1) + ' ruta agregada (' + dur + ')',
+    extraAdded: (n, dur) => capFirst(n) + ' ruta agregada (' + dur + ')',
+    extraAddedRenumbered: (n, dur, c) => capFirst(n) +
+      ' ruta agregada (' + dur + ') · ' + c + ' ruta' + (c === 1 ? '' : 's') +
+      (c === 1 ? ' renumerada' : ' renumeradas'),
     legAdded: dur => 'Tramo de ruta agregado (' + dur + ')',
     legAddedOrphan: 'Tramo agregado — fuera de cualquier turno (marcado)',
     fillDate: 'Completa la fecha', fillBothLeg: 'Completa ambas horas del tramo',
@@ -1269,13 +1507,29 @@ const I18N = {
     fillTime: 'Completa la hora', invalidDT: 'Fecha u hora no válida',
     tooSoon: 'Ignorado — demasiado pronto tras el último ponche', storageFull: 'No se pudo guardar — ¿almacenamiento lleno?',
     punchDeleted: 'Ponche eliminado',
-    confirmDelete: (what, t) => '¿Eliminar esta ' + what + ' (' + t + ')?',
-    clockInWord: 'entrada', clockOutWord: 'salida',
+    // "esta" dropped: it agreed with the feminine entrada/salida but not with
+    // the masculine inicio/fin de ruta. Omitting the demonstrative is correct
+    // for every gender.
+    confirmDelete: (what, t) => '¿Eliminar ' + what + ' (' + t + ')?',
+    // 'ida a la ruta' for depart avoids the salida collision — salida means
+    // both "clock-out" and "departure" — and matches the IDA badge on the row.
+    deleteWord: {
+      in: 'entrada', out: 'salida',
+      depart: 'ida a la ruta', return: 'vuelta a la oficina',
+      rstart: 'inicio de ruta', rend: 'fin de ruta'
+    },
+    deleteWordFallback: 'ponche',
+    deleteAria: (what, t) => 'Eliminar ' + what + ' a las ' + t,
     settingsSaved: 'Ajustes guardados',
     eraseModalTitle: '¿Borrar Todo?',
     eraseWarningText: ['Esto borra cada ponche, ruta y nota en el dispositivo.', 'No hay forma de deshacer.'],
     eraseBackupFirstBtn: 'Guardar Respaldo Primero',
     eraseConfirmBtn: 'Sí, Borrar Todo',
+    installHintPre: 'Consejo: agrega iClock a tu pantalla de inicio. Toca el botón Compartir',
+    installHintPost: ' abajo en Safari y luego "Agregar a inicio". Safari puede borrar los datos de un sitio web, pero una app instalada guarda tus ponches de forma segura.',
+    installHintDismiss: 'Entendido',
+    nudgeNever: '⚠ Sin respaldo — toca para guardar uno. Safari puede borrar los datos.',
+    nudgeStale: n => `⚠ Último respaldo hace ${n} día${n === 1 ? '' : 's'} — toca para guardar otro.`,
     eraseBackupNever: '⚠ Nunca has guardado un respaldo.',
     eraseBackupStale: n => `⚠ Tu último respaldo fue hace ${n} día${n === 1 ? '' : 's'}.`,
     eraseBackupOk: n => n === 0 ? '✓ Respaldado hoy.' : `✓ Respaldado hace ${n} día${n === 1 ? '' : 's'}.`,
@@ -1290,10 +1544,13 @@ const I18N = {
     routeBlockChip: n => n + ' RUTA',
     issMissingOut: 'Falta marcar la salida', issNoDepart: 'Sin salida a ruta registrada',
     issNoReturn: 'Sin regreso de ruta registrado', issDupDepart: 'Salida a ruta duplicada',
+    issDupReturn: 'Regreso de ruta duplicado',
     issOutNoIn: 'Salida sin entrada', issMarkerNoIn: 'Ponche de ruta sin entrada',
     issMissingEnd: 'Falta fin de ruta', issOverlap: 'Ruta extra solapa con el turno',
     issRendNoStart: 'Fin de ruta sin inicio',
-    issOpenCarryover: 'Todavía abierto desde una entrada/inicio de ruta anterior'
+    issOpenCarryover: 'Todavía abierto desde una entrada/inicio de ruta anterior',
+    issSpanCarryover: 'Se cuentan 24h completas — dentro de un turno/ruta de varios días',
+    issSpanCapped: 'Abarca más de un año — los días posteriores no se listan; divide esta entrada y exporta de nuevo'
   }
 };
 function t(key) {
@@ -1315,7 +1572,15 @@ const ORDINALS = {
 };
 function ordinal(n) {
   const pack = ORDINALS[state.settings.language] || ORDINALS.en;
-  return pack[n-1] || n + 'th';
+  if (pack[n-1]) return pack[n-1];
+  // Past the tenth route the table runs out. The old fallback was a hardcoded
+  // English 'th', so a Spanish user saw "11th ruta" — and even in English it
+  // was wrong for 21/22/23. Both are handled properly here.
+  if (state.settings.language === 'es') return n + 'ª';
+  const rem100 = n % 100, rem10 = n % 10;
+  const suffix = (rem100 >= 11 && rem100 <= 13) ? 'th'
+    : rem10 === 1 ? 'st' : rem10 === 2 ? 'nd' : rem10 === 3 ? 'rd' : 'th';
+  return n + suffix;
 }
 function ordinalUpper(n) { return ordinal(n).toUpperCase(); }
 
@@ -1325,9 +1590,15 @@ function saveState() {
 }
 
 // parseFloat + validation in one place: NaN, Infinity, negatives never reach state.
+// A finite-but-absurd value still could, though: an hourly rate of 1e308 passes
+// Number.isFinite, then rate * hours overflows to Infinity and payroll renders
+// "$Infinity" in the UI and a non-numeric "Infinity" token in the CSV. NUM_MAX
+// caps every numeric setting at a value far above any real wage, threshold, or
+// multiplier while leaving the arithmetic safely inside the float range.
+const NUM_MAX = 1e9;
 function numOr(v, fallback, min) {
   const n = parseFloat(v);
-  return (Number.isFinite(n) && n >= min) ? n : fallback;
+  return (Number.isFinite(n) && n >= min && n <= NUM_MAX) ? n : fallback;
 }
 
 function loadState() {
@@ -1350,6 +1621,9 @@ function loadState() {
   }
   state.lastRouteDesc = String(saved.lastRouteDesc || '').slice(0, 60);
   state.lastBackupTs = Number.isFinite(saved.lastBackupTs) ? saved.lastBackupTs : null;
+  // Anything other than explicit true means "not yet dismissed", so a corrupt
+  // or hand-edited backup re-shows the hint rather than hiding it forever.
+  state.installHintSeen = saved.installHintSeen === true;
 
   const out = [];
   const push = (p) => {
@@ -1395,7 +1669,11 @@ function dayBounds(key) {
 }
 
 function formatDateKey(key) {
-  const [y, m, d] = key.split('-');
+  // Mapped through Number to match dayBounds. Previously these stayed strings
+  // and only worked by accident of Date's coercion — new Date('2026', ...)
+  // happens to parse, but the two date helpers disagreeing on input type is a
+  // trap for the next edit.
+  const [y, m, d] = key.split('-').map(Number);
   const date = new Date(y, m-1, d);
   const today = todayKey();
   const yd = new Date(); yd.setDate(yd.getDate()-1);
@@ -1405,12 +1683,20 @@ function formatDateKey(key) {
   return date.toLocaleDateString(state.settings.language === 'es' ? 'es-MX' : 'en-US', { weekday:'short', month:'short', day:'numeric' });
 }
 
+// Fixed 24-hour HH:MM, independent of Settings → Time Format. Payroll files
+// are read by other people and other tools, so their timestamps must not
+// change shape because the worker toggled a display preference on their phone
+// — and 24-hour avoids the AM/PM ambiguity that makes a 12-hour timesheet
+// risky to reconcile. The live UI still follows the setting via formatTime().
+function formatTime24(ts) {
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+
 // All clock faces follow Settings → Time Format: 12-hour (1:05 PM) or 24-hour (13:05).
 function formatTime(ts) {
+  if (state.settings.timeFormat === '24') return formatTime24(ts);
   const d = new Date(ts);
-  if (state.settings.timeFormat === '24') {
-    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-  }
   let h = d.getHours(), m = d.getMinutes();
   const ampm = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
@@ -1427,8 +1713,33 @@ function formatDuration(ms) {
 }
 
 // ── CORE ENGINE ──
+// At an identical timestamp, ordering by id alone puts punches in whatever
+// order they were ENTERED, which can invert a pair: a 'return' added before
+// its 'depart' (both at the same HH:MM, since mkTs zeroes seconds) sorted
+// first and left the leg looking unclosed. Openers therefore sort before
+// closers at equal ts, so derive()'s walk stays coherent: a shift exists
+// before its markers attach, and a leg/route opens before it closes.
+const TYPE_ORDER = { in: 0, rstart: 1, depart: 2, return: 3, rend: 4, out: 5 };
+
 function sortedPunches() {
-  return [...state.punches].sort((a,b) => a.ts - b.ts || a.id - b.id);
+  return [...state.punches].sort((a, b) =>
+    a.ts - b.ts ||
+    ((TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9)) ||
+    a.id - b.id);
+}
+
+// Whole log grouped into date-key → punches, in sort order. Callers that
+// render or export every day used to run sortedPunches().filter(...) inside
+// their per-day loop, re-sorting the full log once per day — O(n² log n), and
+// slow enough to notice on a multi-year history. Grouping once is O(n log n).
+function punchesByDay() {
+  const byDay = new Map();
+  for (const p of sortedPunches()) {
+    const k = dateKey(new Date(p.ts));
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k).push(p);
+  }
+  return byDay;
 }
 
 // Punches pair into SHIFT segments (in→out) across the WHOLE log, so overnight
@@ -1476,7 +1787,13 @@ function derive() {
   const last = sorted[sorted.length - 1] || null;
   const today = todayKey();
   let stage = 0;
-  if (open) stage = last.type === 'in' ? 1 : last.type === 'depart' ? 2 : 3;
+  // Stage of an open shift comes from that shift's OWN markers, never from the
+  // global last punch — an unrelated rstart/rend at the tail of the log must not
+  // push the shift into a stage whose render branch reads a marker it lacks.
+  if (open) {
+    const lm = open.markers[open.markers.length - 1] || null;
+    stage = !lm ? 1 : lm.type === 'depart' ? 2 : 3;
+  }
   else if (openR) stage = 5;
   else if (last && last.type === 'out' && dateKey(new Date(last.ts)) === today) stage = 4;
   else if (last && last.type === 'rend' && dateKey(new Date(last.ts)) === today) stage = 6;
@@ -1488,7 +1805,19 @@ function derive() {
     stage, clockedIn,
     openP:   clockedIn ? open.inP : null,
     openSeg: clockedIn ? open : null,
-    openRoute: (!open && openR) ? openR : null
+    // openRoute is a DATA fact: the extra-route segment that has no rend yet,
+    // regardless of whether a shift is also open. Nulling it while clocked in
+    // made a live route contribute zero hours and get flagged "missing end".
+    // Stage 5 (the UI's "live route" focus) is still shift-first — every
+    // stage-5 consumer gates on the stage, not on this field.
+    openRoute: openR,
+    // A live extra route while a shift is ALSO open used to be unreachable:
+    // stage resolved shift-first (1-3), the main button became DEPART/RETURN/
+    // CLOCK OUT, and no control emitted 'rend'. The route then stayed open
+    // forever, accruing hours and pinning openSpanDays to today. This flag
+    // marks the case so the secondary control can surface an END ROUTE action
+    // without disturbing shift-first stage precedence.
+    canEndRoute: !!openR && !!open
   };
 }
 
@@ -1496,17 +1825,114 @@ function derive() {
 // from its start day through today. Used so a multi-day-old forgotten
 // clock-out/route-end still shows up in History/CSV instead of vanishing
 // on the days in between (which would otherwise have no punches at all).
+// Hard ceiling on how many days a single open shift/route can span. Reaching
+// it means the log is pathological (a clock-out forgotten for over a year),
+// not that the days should vanish — openSpanCapped() lets dayIssues surface it
+// instead of silently dropping payroll days.
+const OPEN_SPAN_MAX_DAYS = 366;
+
 function openSpanDays(drv) {
-  const startTs = drv.openP ? drv.openP.ts : (drv.openRoute ? drv.openRoute.startP.ts : null);
-  if (startTs === null) return [];
+  // Both a shift and an extra route can be open at once — span from whichever
+  // started earliest so no day either of them touches is dropped.
+  const starts = [];
+  if (drv.openP) starts.push(drv.openP.ts);
+  if (drv.openRoute) starts.push(drv.openRoute.startP.ts);
+  if (!starts.length) return [];
+  const startTs = Math.min(...starts);
   const days = [];
   let key = dateKey(new Date(startTs));
   const today = todayKey();
-  for (let i = 0; i < 366 && key <= today; i++) {
+  for (let i = 0; i < OPEN_SPAN_MAX_DAYS && key <= today; i++) {
     days.push(key);
     key = dateKey(new Date(dayBounds(key)[1]));
   }
   return days;
+}
+
+// True when openSpanDays hit its ceiling and stopped short of today.
+function openSpanCapped(drv) {
+  const days = openSpanDays(drv);
+  return days.length === OPEN_SPAN_MAX_DAYS && days[days.length - 1] < todayKey();
+}
+
+// Days strictly INSIDE a closed multi-day shift or route. openSpanDays covers
+// only segments that are still open, so a forgotten clock-out that was later
+// corrected (in 06-01 → out 06-04) left 06-02 and 06-03 in no key set at all:
+// History skipped them, the CSV skipped them, and the backup skipped them —
+// yet calcHoursForDay reported a full 24h for each. Two payroll days' worth of
+// hours existed in the data and appeared on no listed day. Callers union this
+// with openSpanDays so every day carrying hours is actually listed (and can
+// therefore show its dayIssues flag).
+// Walks every closed multi-day span once and returns both facts callers need:
+// the set of pass-through days, and the last day listed by a span that hit the
+// ceiling (null when nothing truncates). These were two functions running the
+// same loop; closedSpanCapEnd is called from dayIssues, so the duplicate walk
+// repeated for every day rendered.
+function closedSpanWalk(drv) {
+  // Memoised on the derive result. dayIssues asks for capEnd once per day
+  // rendered, and History/CSV/backup each ask for the day set — all against
+  // the same drv, so without this the whole walk repeats for every day on
+  // screen. derive() returns a fresh object per call, so the cache can never
+  // outlive the data it describes.
+  if (drv._spanWalk) return drv._spanWalk;
+  const days = new Set();
+  let capEnd = null;
+  for (const [s, e] of closedSpans(drv)) {
+    const endKey = dateKey(new Date(e));
+    let key = dateKey(new Date(dayBounds(dateKey(new Date(s)))[1])); // day after start
+    for (let i = 0; i < OPEN_SPAN_MAX_DAYS && key < endKey; i++) {
+      days.add(key);
+      const next = dateKey(new Date(dayBounds(key)[1]));
+      // Last iteration allowed by the ceiling, but the span runs on past it:
+      // this is where the listing stops short and the truncation needs flagging.
+      if (i === OPEN_SPAN_MAX_DAYS - 1 && next < endKey && (capEnd === null || key > capEnd)) {
+        capEnd = key;
+      }
+      key = next;
+    }
+  }
+  return (drv._spanWalk = { days: [...days], capEnd });
+}
+
+function closedSpanDays(drv) {
+  return closedSpanWalk(drv).days;
+}
+
+// The [start, end] pairs closedSpanDays walks. Shared so the cap check below
+// measures exactly the same spans rather than re-deriving them.
+function closedSpans(drv) {
+  return [
+    ...drv.segments.filter(s => s.outP).map(s => [s.inP.ts, s.outP.ts]),
+    ...drv.routeSegs.filter(s => s.endP).map(s => [s.startP.ts, s.endP.ts])
+  ];
+}
+
+// The last day a capped closed span actually lists, or null if nothing is
+// capped. openSpanCapped surfaces this for OPEN segments via issSpanCapped,
+// but a closed span longer than the ceiling truncated silently: a multi-year
+// forgotten clock-out dropped well over a thousand days of hours with no
+// warning anywhere. Returns the day to hang the flag on.
+function closedSpanCapEnd(drv) {
+  return closedSpanWalk(drv).capEnd;
+}
+
+// Every day that carries hours but may have no punches of its own — the union
+// of open and closed multi-day spans. This is the set every day-listing
+// surface (History, CSV, backup) must add to its punch-derived keys.
+function spannedDays(drv) {
+  return [...new Set([...openSpanDays(drv), ...closedSpanDays(drv)])];
+}
+
+// Every day a listing surface must show, newest first: days holding punches,
+// plus days that only carry hours because a multi-day shift or route passes
+// through them. History, the CSV and the backup all need exactly this set —
+// they each built it inline, which is how a day carrying 24h once ended up
+// listed by none of them. One definition means that invariant holds in one
+// place instead of three.
+function listedDayKeys(drv) {
+  const keysSet = new Set(state.punches.map(p => dateKey(new Date(p.ts))));
+  spannedDays(drv).forEach(k => keysSet.add(k));
+  return [...keysSet].sort().reverse();
 }
 
 // Extra-route numbering helpers (per calendar day of the route's start).
@@ -1639,22 +2065,60 @@ function dayIssues(key, drv) {
         break;
       }
     }
+    // Mirror of the duplicate-departure check. Two returns against one
+    // departure pair only the first; the second contributes nothing to route
+    // hours and previously raised no flag at all, so a stray punch left the
+    // day looking clean while quietly sitting in the log.
+    for (let i = 1; i < seg.markers.length; i++) {
+      if (seg.markers[i].type === 'return' && seg.markers[i-1].type === 'return') {
+        issues.push(t('issDupReturn'));
+        break;
+      }
+    }
   }
   for (const p of drv.orphanOuts) if (inDay(p.ts)) issues.push(t('issOutNoIn'));
   for (const p of drv.orphanMarkers) if (inDay(p.ts)) issues.push(t('issMarkerNoIn'));
 
   // Extra routes: forgotten end, end without start, overlap with the shift.
   const shiftIv = shiftIntervals(drv).map(([s, e]) => [s, e]);
+  const nowTs = Date.now();
   for (const rs of drv.routeSegs) {
     if (inDay(rs.startP.ts) && !rs.endP && rs !== drv.openRoute) issues.push(t('issMissingEnd'));
-    const rsEnd = rs.endP ? rs.endP.ts : (rs === drv.openRoute ? Infinity : null);
-    if (rsEnd && inDay(rs.startP.ts)) {
+    // A live route ends "now", not at Infinity — an unbounded end would report
+    // an overlap against every shift interval on the day.
+    const rsEnd = rs.endP ? rs.endP.ts
+      : (rs === drv.openRoute ? Math.max(nowTs, rs.startP.ts) : null);
+    if (rsEnd !== null && inDay(rs.startP.ts)) {
       for (const [s, e] of shiftIv) {
         if (rs.startP.ts < e && rsEnd > s) { issues.push(t('issOverlap')); break; }
       }
     }
   }
   for (const p of drv.orphanRends) if (inDay(p.ts)) issues.push(t('issRendNoStart'));
+
+  // A CLOSED shift/route can also span days: a forgotten clock-out or route-end
+  // finally corrected days later passes a full 24h through every day in
+  // between, and nothing else flags those days. The open-span check below
+  // never fires for them (openRoute/openP are null once the segment closes),
+  // which let a 24.00h day render as an ordinary one. Note a middle day CAN
+  // still carry a punch of its own (a return logged mid-span), so the message
+  // states the 24h fact rather than claiming the day is punch-less.
+  const spanning = [
+    ...drv.segments.filter(s => s.outP).map(s => [s.inP.ts, s.outP.ts]),
+    ...drv.routeSegs.filter(s => s.endP).map(s => [s.startP.ts, s.endP.ts])
+  ];
+  for (const [s, e] of spanning) {
+    const sKey = dateKey(new Date(s));
+    const eKey = dateKey(new Date(e));
+    // Only the days strictly between start and end are punch-less pass-through
+    // days; the start and end days carry their own punches and read normally.
+    if (key > sKey && key < eKey) { issues.push(t('issSpanCarryover')); break; }
+  }
+
+  // A closed span longer than the ceiling stops listing days partway through.
+  // Without this the truncation was invisible — the same problem issSpanCapped
+  // already solves for open segments.
+  if (key === closedSpanCapEnd(drv)) issues.push(t('issSpanCapped'));
 
   // A shift/route still open from an earlier day passes full 24h through any
   // day in between with no punches of its own — flag it so that isn't mistaken
@@ -1663,8 +2127,19 @@ function dayIssues(key, drv) {
   if (openStartTs !== null) {
     const startKey = dateKey(new Date(openStartTs));
     if (key > startKey && key <= todayKey()) issues.push(t('issOpenCarryover'));
+    // Days beyond the ceiling aren't listed at all, so flag it on the last day
+    // that IS listed — otherwise the truncation is invisible.
+    if (openSpanCapped(drv)) {
+      const listed = openSpanDays(drv);
+      if (key === listed[listed.length - 1]) issues.push(t('issSpanCapped'));
+    }
   }
-  return issues;
+  // Several checks above run per-segment, so a day with two bad routes (or two
+  // shifts missing a departure) produced the identical string more than once —
+  // rendering duplicate ⚠ badges in History and repeating it in the CSV Flags
+  // column. Each distinct problem should be stated once per day; deduping at
+  // the single exit point covers every category without touching the loops.
+  return [...new Set(issues)];
 }
 
 // ── DOM HELPER ──
@@ -1676,11 +2151,27 @@ function el(tag, cls, text) {
   return n;
 }
 
+// History is expensive to rebuild and invisible unless its tab is open, so
+// every mutation guards the call. That guard appeared verbatim in eleven
+// places; naming it keeps the intent obvious and means a future change to how
+// "is History visible" is determined happens in exactly one spot.
+function refreshHistoryIfVisible() {
+  if (document.getElementById('page-history').classList.contains('active')) renderHistory();
+}
+
+let toastTimer = null;
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+  // Named toastEl, not t — `t` is the global translation function, and
+  // shadowing it here would make t('key') unavailable inside this scope.
+  const toastEl = document.getElementById('toast');
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  // Each toast previously started its own 2200ms timer while the double-tap
+  // guard only spans 1500ms, so a second toast inherited the first one's
+  // pending timeout and vanished early. Clearing gives every message its
+  // full duration.
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.classList.remove('show'); toastTimer = null; }, 2200);
 }
 
 // ── LIVE CLOCK ──
@@ -1721,24 +2212,35 @@ function updateClock() {
   if (todayKey() !== currentDay) {
     currentDay = todayKey();
     renderClockUI();
-    if (document.getElementById('page-history').classList.contains('active')) renderHistory();
+    refreshHistoryIfVisible();
   }
 }
 
 // ── PUNCH ──
+// When punch() last appended, in wall-clock ms. Insertion recency is a
+// different fact from punch timestamps: manual entries can be backdated, or
+// dated up to a minute ahead, so the timestamp-sorted tail says nothing about
+// whether the user just tapped. Measuring against the tail failed both ways —
+// a manual punch dated to the current minute blocked the next real tap, and a
+// future-dated one made the delta permanently negative, disabling the guard so
+// genuine double-taps got through. Only real taps write this.
+let lastPunchCreatedAt = 0;
+
 // Shared punch core: double-tap guard, append, persist, re-render.
 function punch(type, toastMsg, note = '') {
   const now = Date.now();
-  const sorted = sortedPunches();
-  const last = sorted[sorted.length - 1];
-  // Double-tap guard: ignore a punch within 1.5s AFTER the previous one.
-  // (A future-dated previous punch must not block punching forever.)
-  const dt = last ? now - last.ts : Infinity;
-  if (dt >= 0 && dt < 1500) { showToast(t('tooSoon')); return; }
+  // Double-tap guard: ignore a second tap within 1.5s of the previous tap.
+  if (now - lastPunchCreatedAt < 1500) { showToast(t('tooSoon')); return; }
+  lastPunchCreatedAt = now;
 
   state.punches.push({ id: state.nextId++, type, ts: now, note });
   saveState();
   renderClockUI();
+  // The punch buttons live on the Clock page, so History is not normally
+  // visible here — but every other mutation path refreshes it, and relying on
+  // "this control can't be reached from that tab" is the kind of assumption
+  // that breaks silently when a shortcut or widget is added later.
+  refreshHistoryIfVisible();
   showToast(toastMsg || TYPE_TOAST[type](now));
 }
 
@@ -1760,6 +2262,15 @@ function handlePunch() {
 // Opens the Route Descriptor prompt first — nothing is logged until confirmed.
 function handleRouteStart() {
   const drv = derive();
+  // A live extra route running underneath an open shift has no other exit:
+  // the main button belongs to the shift flow. The secondary control ends the
+  // route instead of starting one, so 'rend' is always reachable.
+  if (drv.canEndRoute) {
+    const seg = drv.openRoute;
+    const n = routeNumberOf(seg, drv);
+    punch('rend', t('routeEnded')(ordinal(n), formatDuration(Date.now() - seg.startP.ts)));
+    return;
+  }
   if (drv.stage !== 4 && drv.stage !== 6) return;
   openRouteModal();
 }
@@ -1801,7 +2312,12 @@ function renderClockUI() {
   // "Start a second/third route" link: only after clock-out (or after an
   // extra route ended) and only while it's still the same day.
   const startLink = document.getElementById('routeStartBtn');
-  if (drv.stage === 4 || drv.stage === 6) {
+  if (drv.canEndRoute) {
+    // Route open underneath a shift: this control ends it rather than starting
+    // another, so the only path to 'rend' stays visible.
+    startLink.textContent = t('endRouteLink')(ordinal(routeNumberOf(drv.openRoute, drv)).toLowerCase());
+    startLink.classList.add('show');
+  } else if (drv.stage === 4 || drv.stage === 6) {
     startLink.textContent = t('startRouteLink')(ordinal(nextRouteNumber(drv)).toLowerCase());
     startLink.classList.add('show');
   } else {
@@ -1811,9 +2327,20 @@ function renderClockUI() {
   if (drv.clockedIn) {
     dot.classList.add('clocked-in');
     label.classList.add('clocked-in');
-    if (drv.stage === 1)      label.textContent = t('clockedInSince')(formatTime(drv.openP.ts));
-    else if (drv.stage === 2) label.textContent = t('onRouteSince')(formatTime(lastMarker(drv.openSeg, 'depart').ts));
-    else                      label.textContent = t('backAtPOSince')(formatTime(lastMarker(drv.openSeg, 'return').ts));
+    // Marker lookups are guarded: the stage fix makes a missing marker
+    // unreachable, but this label is a single point of failure for the whole
+    // page, so it degrades to the always-present clock-in time instead.
+    if (drv.stage === 1) {
+      label.textContent = t('clockedInSince')(formatTime(drv.openP.ts));
+    } else if (drv.stage === 2) {
+      const dep = lastMarker(drv.openSeg, 'depart');
+      label.textContent = dep ? t('onRouteSince')(formatTime(dep.ts))
+                              : t('clockedInSince')(formatTime(drv.openP.ts));
+    } else {
+      const ret = lastMarker(drv.openSeg, 'return');
+      label.textContent = ret ? t('backAtPOSince')(formatTime(ret.ts))
+                              : t('clockedInSince')(formatTime(drv.openP.ts));
+    }
   } else if (drv.stage === 5) {
     // Live extra route: green dot, main button ends it.
     const n = routeNumberOf(drv.openRoute, drv);
@@ -1832,6 +2359,8 @@ function renderClockUI() {
 
   renderTodayPunches(drv);
   updateTodaySummary(drv);
+  refreshBackupNudge();
+  refreshInstallHint();
 }
 
 function updateTodaySummary(drv) {
@@ -1905,7 +2434,11 @@ function punchRow(p, drv, opts = {}) {
 
   const del = el('button', 'delete-punch', '✕');
   del.type = 'button';
-  del.setAttribute('aria-label', `Delete ${TYPE_LABEL[p.type].toLowerCase()} at ${formatTime(p.ts)}`);
+  // Same noun as the confirm dialog, in the current language. Previously this
+  // used the English-only TYPE_LABEL, so a Spanish user heard "Delete depart
+  // to route" while the dialog said "¿Eliminar ida a la ruta?".
+  del.setAttribute('aria-label',
+    t('deleteAria')(t('deleteWord')[p.type] || t('deleteWordFallback'), formatTime(p.ts)));
   del.addEventListener('click', () => deletePunch(p.id));
   div.appendChild(del);
   return div;
@@ -2022,10 +2555,20 @@ function renderTodayPunches(drv) {
 function deletePunch(id) {
   const p = state.punches.find(x => x.id === id);
   if (!p) return;
-  if (!confirm(t('confirmDelete')(p.type === 'in' ? t('clockInWord') : t('clockOutWord'), formatTime(p.ts)))) return;
+  // Every punch type gets its own noun. The fallback keeps the dialog
+  // functional (and free of a literal "undefined") if an unrecognized or
+  // missing type ever reaches here.
+  const what = t('deleteWord')[p.type] || t('deleteWordFallback');
+  if (!confirm(t('confirmDelete')(what, formatTime(p.ts)))) return;
   state.punches = state.punches.filter(x => x.id !== id);
   saveState();
   renderClockUI();
+  // Punch rows (with their ✕ buttons) render in History as well as on the
+  // Clock page, and deleting from History is the common case — a mistyped
+  // backdated punch is spotted there. Every other mutation path refreshes
+  // History; this one did not, so the deleted row stayed on screen until the
+  // tab was switched away and back, making the delete look like it failed.
+  refreshHistoryIfVisible();
   showToast(t('punchDeleted'));
 }
 
@@ -2057,7 +2600,11 @@ function contextLine(drv) {
   if (drv.stage === 6) return t('ctxExtraDone')(ordinal(nextRouteNumber(drv) - 1).toLowerCase());
   if (!drv.clockedIn) return t('ctxNotClockedIn');
   if (drv.stage === 1) return t('ctxClockedIn')(formatTime(drv.openP.ts));
-  if (drv.stage === 2) return t('ctxOnRoute')(formatTime(lastMarker(drv.openSeg, 'depart').ts));
+  if (drv.stage === 2) {
+    const dep = lastMarker(drv.openSeg, 'depart');
+    if (dep) return t('ctxOnRoute')(formatTime(dep.ts));
+    return t('ctxClockedIn')(formatTime(drv.openP.ts));
+  }
   return t('ctxBackAtPO');
 }
 
@@ -2120,7 +2667,7 @@ function saveManualPunch() {
     saveState();
     closeManualModal();
     renderClockUI();
-    if (document.getElementById('page-history').classList.contains('active')) renderHistory();
+    refreshHistoryIfVisible();
     // A leg outside any shift that day is kept but flagged — say so.
     const orphan = derive().orphanMarkers.some(p => p.ts === depTs || p.ts === retTs);
     showToast(orphan ? t('legAddedOrphan')
@@ -2136,14 +2683,41 @@ function saveManualPunch() {
     if (!startTs || !endTs) { showToast(t('fillBothRoute')); return; }
     if (endTs <= startTs) { showToast(t('endAfterStart')); return; }
     if (endTs > Date.now() + 60000) { showToast(t('noFuture')); return; }
+    // Snapshot every existing route's number BEFORE the insert, so a backdated
+    // route landing mid-list can report how many it pushed up.
+    const drvBefore = derive();
+    const numsBefore = new Map();
+    for (const s of routeSegsForDay(date, drvBefore)) {
+      numsBefore.set(s.startP.id, routeNumberOf(s, drvBefore));
+    }
+    const startId = state.nextId; // captured so the new segment can be found exactly
     state.punches.push({ id: state.nextId++, type: 'rstart', ts: startTs, note });
     state.punches.push({ id: state.nextId++, type: 'rend', ts: endTs, note: '' });
     saveState();
     closeManualModal();
     renderClockUI();
-    if (document.getElementById('page-history').classList.contains('active')) renderHistory();
-    const n = routeSegsForDay(date, derive()).length + 1;
-    showToast(t('extraAdded')(ordinal(n), formatDuration(endTs - startTs)));
+    refreshHistoryIfVisible();
+    // Number the route the SAME way every other surface does — by its
+    // chronological position — rather than assuming it was appended last.
+    // routeSegsForDay is ordered by start time, so a backdated route lands
+    // mid-list and length+1 would overcount it (and disagree with the block
+    // header, status line, and CSV, which all use routeNumberOf).
+    const drvAfter = derive();
+    const addedSeg = drvAfter.routeSegs.find(s => s.startP.id === startId);
+    const n = addedSeg ? routeNumberOf(addedSeg, drvAfter)
+                       : routeSegsForDay(date, drvAfter).length + 1;
+    // Count existing routes whose number actually changed. Appending displaces
+    // nothing; inserting shifts every later route up by one.
+    let renumbered = 0;
+    for (const s of routeSegsForDay(date, drvAfter)) {
+      if (s.startP.id === startId) continue;
+      const was = numsBefore.get(s.startP.id);
+      if (was !== undefined && was !== routeNumberOf(s, drvAfter)) renumbered++;
+    }
+    const dur = formatDuration(endTs - startTs);
+    showToast(renumbered > 0
+      ? t('extraAddedRenumbered')(ordinal(n), dur, renumbered)
+      : t('extraAdded')(ordinal(n), dur));
     return;
   }
 
@@ -2161,7 +2735,7 @@ function saveManualPunch() {
   saveState();
   closeManualModal();
   renderClockUI();
-  if (document.getElementById('page-history').classList.contains('active')) renderHistory();
+  refreshHistoryIfVisible();
   showToast(t('manualAdded')(TYPE_LABEL[punchType].toLowerCase()));
 }
 
@@ -2171,19 +2745,17 @@ function renderHistory() {
   const elc = document.getElementById('historyContent');
   elc.innerHTML = '';
 
-  const keysSet = new Set(state.punches.map(p => dateKey(new Date(p.ts))));
-  // An open shift/route can carry hours into days that have no punches of
-  // their own (including today) — make sure every day it touches is listed.
-  openSpanDays(drv).forEach(k => keysSet.add(k));
-  const keys = [...keysSet].sort().reverse();
+  const keys = listedDayKeys(drv);
 
   if (keys.length === 0) {
     elc.appendChild(el('div', 'empty-state', t('noHistory')));
     return;
   }
 
+  const byDay = punchesByDay();
+
   for (const key of keys) {
-    const punches = sortedPunches().filter(p => dateKey(new Date(p.ts)) === key);
+    const punches = byDay.get(key) || [];
     const carrySrc = drv.openP || (drv.openRoute ? drv.openRoute.startP : null);
     const carry = (key === todayKey() && carrySrc && !punches.some(p => p.id === carrySrc.id)) ? carrySrc : null;
 
@@ -2235,7 +2807,7 @@ function saveSettings() {
   state.settings.otMultiplier = numOr(document.getElementById('otMultiplier').value, 1.5, 1);
   saveState();
   updateTodaySummary();
-  if (document.getElementById('page-history').classList.contains('active')) renderHistory();
+  refreshHistoryIfVisible();
   showToast(t('settingsSaved'));
 }
 
@@ -2256,7 +2828,7 @@ function setTimeFormat(fmt) {
   reflectPrefs();
   updateClock();     // big clock + elapsed re-render immediately
   renderClockUI();   // punch times in Today's Punches follow too
-  if (document.getElementById('page-history').classList.contains('active')) renderHistory();
+  refreshHistoryIfVisible();
 }
 
 // Segmented controls reflect the saved values.
@@ -2280,6 +2852,7 @@ function applyLanguage() {
   s('lblPrefsCard', 'prefsCard'); s('lblLanguage', 'lblLanguage'); s('lblTimeFormat', 'lblTimeFormat');
   s('fmt12', 'fmt12'); s('fmt24', 'fmt24');
   s('lblPayCard', 'payCard'); s('lblShowPay', 'showPay'); s('lblHourlyRate', 'hourlyRate');
+  s('payDevNote', 'devNote'); s('manualDevNote', 'devNote');
   s('lblOtThreshold', 'otThreshold'); s('lblOtMultiplier', 'otMultiplier');
   s('lblDataCard', 'dataCard'); s('btnExport', 'exportCSV'); s('btnClear', 'clearAll');
   s('btnBackup', 'btnBackup'); s('btnImportBackup', 'btnImportBackup');
@@ -2302,12 +2875,70 @@ function applyLanguage() {
   reflectPrefs();
   setManualMode(manualMode); // re-applies modal title/save/note-label in the new language
   renderClockUI();
-  if (document.getElementById('page-history').classList.contains('active')) renderHistory();
+  refreshHistoryIfVisible();
 }
 
 function daysSinceBackup() {
   if (!state.lastBackupTs) return null;
   return Math.floor((Date.now() - state.lastBackupTs) / 86400000);
+}
+
+// ── ADD TO HOME SCREEN HINT ──
+// Only meaningful in a Safari TAB on iOS. Once installed, navigator.standalone
+// is true and the hint is pointless; on desktop or Android the instructions
+// would be wrong, so it stays hidden there too.
+function isIOS() {
+  // iPadOS 13+ reports as Macintosh, so the touch check catches it as well.
+  return /iPad|iPhone|iPod/.test(navigator.platform || '') ||
+         /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
+         (/Macintosh/.test(navigator.userAgent || '') && navigator.maxTouchPoints > 1);
+}
+
+function isStandalone() {
+  return navigator.standalone === true ||
+         (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+}
+
+function refreshInstallHint() {
+  const hint = document.getElementById('installHint');
+  if (!hint) return;
+  const show = isIOS() && !isStandalone() && !state.installHintSeen;
+  if (show) {
+    // Two text nodes flanking the inline SVG. textContent on each half keeps
+    // this injection-free — the icon lives in the markup, not the string.
+    document.getElementById('installHintPre').textContent = t('installHintPre');
+    document.getElementById('installHintPost').textContent = t('installHintPost');
+    document.getElementById('installHintDismiss').textContent = t('installHintDismiss');
+  }
+  hint.hidden = !show;
+}
+
+function dismissInstallHint() {
+  state.installHintSeen = true;
+  saveState();
+  refreshInstallHint();
+}
+
+// Nudge threshold in days. Safari's ITP clears site data after 7 days without
+// a visit, so a worker who backs up less often than weekly is one quiet week
+// away from losing everything. Warn at 5 to leave a margin.
+const BACKUP_NUDGE_DAYS = 5;
+
+function refreshBackupNudge() {
+  const nudge = document.getElementById('backupNudge');
+  if (!nudge) return;
+  // Nothing to lose yet: an empty log needs no backup.
+  if (!state.punches.length) { nudge.classList.remove('show'); return; }
+  const days = daysSinceBackup();
+  if (days === null) {
+    nudge.textContent = t('nudgeNever');
+    nudge.classList.add('show');
+  } else if (days >= BACKUP_NUDGE_DAYS) {
+    nudge.textContent = t('nudgeStale')(days);
+    nudge.classList.add('show');
+  } else {
+    nudge.classList.remove('show');
+  }
 }
 
 function eraseBackupStatusText(days) {
@@ -2318,9 +2949,11 @@ function eraseBackupStatusText(days) {
 
 function refreshEraseBackupStatus() {
   const { text, cls } = eraseBackupStatusText(daysSinceBackup());
-  const el = document.getElementById('eraseBackupStatus');
-  el.textContent = text;
-  el.className = 'erase-backup-status ' + cls;
+  // Named statusEl, not el — `el` is the global element-builder helper, and
+  // shadowing it here would break any el(...) call added to this scope later.
+  const statusEl = document.getElementById('eraseBackupStatus');
+  statusEl.textContent = text;
+  statusEl.className = 'erase-backup-status ' + cls;
 }
 
 function openEraseModal() {
@@ -2351,6 +2984,14 @@ async function backupThenStay() {
 
 function confirmEraseAll() {
   state.punches = [];
+  // Clearing the punches alone left three fields describing data that no
+  // longer exists: lastRouteDesc prefilled the next route with a descriptor
+  // from the erased log, and lastBackupTs made the erase modal claim
+  // "Backed up N days ago" about a backup of nothing. nextId is reset for
+  // tidiness — ids only need to be unique within the current log.
+  state.lastRouteDesc = '';
+  state.lastBackupTs = null;
+  state.nextId = 1;
   saveState();
   closeEraseModal();
   renderClockUI();
@@ -2370,26 +3011,25 @@ function escapeHtml(s) {
 
 function buildBackupHTML() {
   const drv = derive();
-  const keysSet = new Set(state.punches.map(p => dateKey(new Date(p.ts))));
-  openSpanDays(drv).forEach(k => keysSet.add(k));
-  const keys = [...keysSet].sort().reverse();
+  const keys = listedDayKeys(drv);
+  const byDay = punchesByDay();
 
   const rows = keys.map(key => {
     const hours = calcHoursForDay(key, drv);
     const routeH = calcRouteForDay(key, drv);
     const pay = calcPayForDay(hours);
     const issues = dayIssues(key, drv);
-    const punches = sortedPunches().filter(p => dateKey(new Date(p.ts)) === key);
+    const punches = byDay.get(key) || [];
     const punchRows = punches.map(p => `
       <div class="p-row">
         <span class="p-badge ${escapeHtml(BADGE_CLS[p.type] || p.type)}">${escapeHtml(TYPE_LABEL[p.type])}</span>
-        <span class="p-time">${escapeHtml(formatTime(p.ts))}</span>
+        <span class="p-time">${escapeHtml(formatTime24(p.ts))}</span>
         ${p.note ? `<span class="p-note">${escapeHtml(p.note)}</span>` : ''}
       </div>`).join('');
     return `
       <section class="day">
         <div class="day-head">
-          <h2>${escapeHtml(formatDateKey(key))}</h2>
+          <h2>${escapeHtml(key + ' · ' + formatDateKey(key))}</h2>
           <div class="day-nums">${hours.toFixed(2)}h${routeH > 0 ? ` · ${routeH.toFixed(2)}h route` : ''}${pay !== null ? ` · $${pay.toFixed(2)}` : ''}</div>
         </div>
         ${issues.map(i => `<div class="flag">⚠ ${escapeHtml(i)}</div>`).join('')}
@@ -2419,7 +3059,7 @@ function buildBackupHTML() {
   .footer { color:#5A6872; font-size:11px; margin-top:20px; text-align:center; }
 </style></head><body>
   <h1>iClock — Backup / Timesheet</h1>
-  <div class="meta">Exported ${escapeHtml(new Date().toLocaleString())} · ${keys.length} day(s)</div>
+  <div class="meta">Exported ${escapeHtml(dateKey(new Date()) + ' ' + formatTime24(Date.now()))} · ${keys.length} day(s)</div>
   ${rows || '<div class="empty">No data recorded</div>'}
   <div class="footer">This file also contains your full app backup — use Settings → Import Backup to restore it on any device.</div>
   <script type="application/x-iclock-backup" id="backup-data">${payload}<\/script>
@@ -2435,9 +3075,20 @@ async function exportBackup() {
       await navigator.share({ files: [file], title: 'iClock Backup' });
       state.lastBackupTs = Date.now();
       saveState();
+      refreshBackupNudge();
       showToast(t('backupExported'));
       return;
-    } catch (e) { /* user cancelled the share sheet, or it's unsupported — fall through */ }
+    } catch (e) {
+      // AbortError means the user dismissed the share sheet. Previously this
+      // fell through to the <a download> path, which iOS Safari does not
+      // honour for a file it cannot preview — so nothing was saved, yet
+      // lastBackupTs was stamped and a "Backup saved" toast appeared. The
+      // worker then believed their data was safe, and the erase dialog and
+      // the reminder banner both went quiet on the strength of a backup that
+      // never happened. A cancel now leaves state untouched and says so.
+      if (e && e.name === 'AbortError') { showToast(t('backupCancelled')); return; }
+      // Any other failure (unsupported, permission) falls through to download.
+    }
   }
   const blob = new Blob([html], { type: 'text/html' });
   const a = document.createElement('a');
@@ -2449,6 +3100,7 @@ async function exportBackup() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   state.lastBackupTs = Date.now();
   saveState();
+  refreshBackupNudge();
   showToast(t('backupExported'));
 }
 
@@ -2465,19 +3117,47 @@ function importBackup(file) {
     let parsed = null;
     try { parsed = JSON.parse(text); } catch (e) { /* not a raw .json backup — try the embedded payload */ }
     if (!parsed) {
-      const m = text.match(/id="backup-data"[^>]*>([\s\S]*?)<\/script>/);
+      // Anchored to an actual <script> tag rather than the bare attribute, so
+      // the marker text appearing in prose can't be mistaken for the payload.
+      // App-generated files are already safe (escapeHtml neutralises notes);
+      // this hardens hand-edited or third-party files. The LAST match wins:
+      // the real payload is written last, at the end of the document.
+      const all = [...text.matchAll(/<script\b[^>]*\bid="backup-data"[^>]*>([\s\S]*?)<\/script>/g)];
+      const m = all.length ? all[all.length - 1] : null;
       if (m) { try { parsed = JSON.parse(decodeURIComponent(escape(atob(m[1].trim())))); } catch (e) { /* fall through to invalid */ } }
     }
     if (!parsed || !Array.isArray(parsed.punches)) { showToast(t('invalidBackup')); return; }
     if (!confirm(t('confirmImport'))) return;
+    // The imported blob is written to storage and only then sanitised by
+    // loadState(). If anything downstream throws on a malformed backup, the
+    // user is left with corrupt storage and their real data already gone —
+    // so snapshot both storage and the in-memory state, and restore on failure.
+    let prevRaw = null;
+    try { prevRaw = localStorage.getItem(LS_KEY); } catch (e) { /* unreadable — nothing to restore to */ }
+    // A deep clone, not `state` itself: loadState() assigns INTO the existing
+    // state object rather than replacing it, so holding the reference would
+    // hand back the very data the failed import had already overwritten.
+    const prevState = JSON.parse(JSON.stringify(state));
     try { localStorage.setItem(LS_KEY, JSON.stringify(parsed)); }
     catch (e) { showToast(t('storageFull')); return; }
-    loadState();
-    loadSettings();
-    applyLanguage();
-    renderClockUI();
-    if (document.getElementById('page-history').classList.contains('active')) renderHistory();
-    showToast(t('backupImported'));
+    try {
+      loadState();
+      loadSettings();
+      applyLanguage();
+      renderClockUI();
+      refreshHistoryIfVisible();
+      showToast(t('backupImported'));
+    } catch (err) {
+      state = prevState;
+      try {
+        if (prevRaw === null) localStorage.removeItem(LS_KEY);
+        else localStorage.setItem(LS_KEY, prevRaw);
+      } catch (e) { /* best effort — in-memory state is already restored */ }
+      loadSettings();
+      applyLanguage();
+      renderClockUI();
+      showToast(t('invalidBackup'));
+    }
   };
   reader.onerror = () => showToast(t('invalidBackup'));
   reader.readAsText(file);
@@ -2499,14 +3179,15 @@ function csvCell(v) {
 
 function exportCSV() {
   const drv = derive();
-  const keysSet = new Set(state.punches.map(p => dateKey(new Date(p.ts))));
-  openSpanDays(drv).forEach(k => keysSet.add(k));
-  const keys = [...keysSet].sort();
+  // Ascending, unlike History and the backup: a payroll file reads
+  // chronologically.
+  const keys = listedDayKeys(drv).reverse();
   if (!keys.length) { showToast(t('noData')); return; }
 
   const rate = numOr(state.settings.hourlyRate, 0, 0);
   const ot = numOr(state.settings.otThreshold, 8, 0);
 
+  const byDay = punchesByDay();
   const rows = [['Date','Hours','Route Hours','Regular Hours','OT Hours','Hourly Rate','Est Pay','Punches','Notes','Flags']];
   for (const key of keys) {
     const h = calcHoursForDay(key, drv);
@@ -2514,8 +3195,12 @@ function exportCSV() {
     const reg = Math.min(h, ot);
     const otH = Math.max(0, h - ot);
     const pay = calcPayForDay(h);
-    const dayPunches = sortedPunches().filter(p => dateKey(new Date(p.ts)) === key);
-    const plist = dayPunches.map(p => `${TYPE_LABEL[p.type].toUpperCase()} ${formatTime(p.ts)}`).join('; ');
+    const dayPunches = byDay.get(key) || [];
+    // formatTime24, not formatTime: the CSV is a payroll artifact and its
+    // timestamps stay 24-hour regardless of the phone's display setting, so
+    // the same day always exports the same way. Matches the English-only
+    // headers and TYPE_LABEL, which are deliberately locale-independent here.
+    const plist = dayPunches.map(p => `${TYPE_LABEL[p.type].toUpperCase()} ${formatTime24(p.ts)}`).join('; ');
     const notes = dayPunches.map(p => p.note).filter(Boolean).join('; ');
     rows.push([
       key,
@@ -2546,7 +3231,7 @@ function exportCSV() {
 // ── TABS ──
 function switchTab(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+  document.querySelectorAll('.tab').forEach(tabEl => { tabEl.classList.remove('active'); tabEl.setAttribute('aria-selected', 'false'); });
   document.getElementById('page-' + name).classList.add('active');
   const tab = document.getElementById('tab-' + name);
   tab.classList.add('active');
@@ -2561,6 +3246,36 @@ applyLanguage();
 renderClockUI();
 setInterval(updateClock, 1000);
 updateClock();
+
+// ── iOS SAFARI LIFECYCLE ──
+// Safari throttles timers in background tabs, suspends them entirely when the
+// phone locks, and may discard the page under memory pressure and restore it
+// later from the back/forward cache. In every one of those cases setInterval
+// stops firing, so on return the clock face, the elapsed counter and the day's
+// hours are frozen at whatever they read when the tab went away — a worker
+// glancing at the app after a locked phone would see a stale time and, after
+// midnight, yesterday's totals. Nothing is lost (all state derives from the
+// punch log on demand), but the display has to be told to catch up.
+function resyncFromBackground() {
+  // Re-derive the current day first: crossing midnight while suspended means
+  // the cached currentDay is stale and the punch lists belong to another day.
+  if (todayKey() !== currentDay) {
+    currentDay = todayKey();
+    renderClockUI();
+  }
+  updateClock();
+  refreshHistoryIfVisible();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) resyncFromBackground();
+});
+// pageshow with persisted=true means the page came from the back/forward
+// cache, where visibilitychange alone is not guaranteed to fire.
+window.addEventListener('pageshow', (e) => { if (e.persisted) resyncFromBackground(); });
+// focus covers returning from the share sheet or the file picker, which can
+// leave the page visible but with timers throttled.
+window.addEventListener('focus', resyncFromBackground);
 
 // Best-effort: ask the browser not to evict this origin's storage under
 // pressure. Doesn't stop a manual "clear browsing data," but helps against
