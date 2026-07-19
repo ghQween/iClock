@@ -984,6 +984,12 @@
     );
     border-bottom: 2px solid #6B5200;
   }
+  /* An author `display` declaration beats the UA stylesheet's
+     `[hidden] { display: none }`, so `display: flex` above kept the bar on
+     screen even once exitDemoMode() set bar.hidden — the session ended, the
+     toast fired, but the banner stayed and the app looked stuck in demo.
+     This restores the attribute's meaning for the one element that needs it. */
+  .demo-bar[hidden] { display: none; }
   .demo-bar-text {
     font-family: var(--cond);
     font-size: 12px;
