@@ -3128,6 +3128,11 @@ const BACKUP_NUDGE_DAYS = 5;
 function refreshBackupNudge() {
   const nudge = document.getElementById('backupNudge');
   if (!nudge) return;
+  // Demo punches are discarded on exit, so there is nothing to back up and the
+  // reminder would be actively misleading — it links to an export that demo
+  // mode blocks anyway. Entering demo also clears lastBackupTs, which made the
+  // "no backup yet" variant fire as soon as the first demo punch was added.
+  if (demoMode) { nudge.classList.remove('show'); return; }
   // Nothing to lose yet: an empty log needs no backup.
   if (!state.punches.length) { nudge.classList.remove('show'); return; }
   const days = daysSinceBackup();
