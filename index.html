@@ -94,7 +94,32 @@
     height: 36px;
     display: inline-flex;
     align-items: center;
+    /* A real <button>, so strip the UA chrome back to the original span look. */
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+    font-family: inherit;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    /* The triple-tap knock lives here, and rapid taps on a text emoji are
+       exactly what browsers interpret as something else:
+         - double-tap-to-zoom eats the 2nd/3rd tap on Android (notably Firefox)
+         - text selection / the callout menu fires on the emoji glyph
+         - a 300ms click delay can drop taps outside the detection window
+       touch-action: manipulation disables double-tap zoom while keeping normal
+       scrolling and taps; user-select: none stops the glyph being selected. */
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
+  /* No visible press state: the knock is meant to be discoverable only if you
+     already know about it. */
+  .logo-eagle:focus { outline: none; }
+  .logo-eagle:focus-visible { outline: 2px solid rgba(255,255,255,0.6); outline-offset: 2px; }
 
   .logo-text {
     display: flex;
@@ -975,8 +1000,9 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding: 7px 14px;
+    /* 20% more compact (was gap 10px / padding 7px 14px). */
+    gap: 8px;
+    padding: 5.6px 11.2px;
     background: repeating-linear-gradient(
       -45deg,
       #F5C518 0 10px,
@@ -992,7 +1018,9 @@
   .demo-bar[hidden] { display: none; }
   .demo-bar-text {
     font-family: var(--cond);
-    font-size: 12px;
+    /* Type shrinks less than the box: the banner has to stay readable at a
+       glance, which is its entire job. */
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -1000,14 +1028,15 @@
   }
   .demo-exit-btn {
     flex: none;
-    min-height: 32px;
-    padding: 6px 14px;
+    /* 20% more compact (was min-height 32px / padding 6px 14px). */
+    min-height: 25.6px;
+    padding: 4.8px 11.2px;
     border: 1.5px solid #3D2E00;
     border-radius: 4px;
     background: #FFF8E5;
     color: #3D2E00;
     font-family: var(--cond);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.08em;
     cursor: pointer;
@@ -1020,12 +1049,38 @@
   .demo-exit-btn::before {
     content: '';
     position: absolute;
-    top: -6px; bottom: -6px; left: -8px; right: -8px;
+    /* The visible chip is now 25.6px tall, so the invisible hit area has to
+       stretch further to hold the 44px touch minimum: 25.6 + 9.2*2 = 44. */
+    top: -9.2px; bottom: -9.2px; left: -10px; right: -10px;
   }
   .demo-exit-btn:active { background: #F5C518; }
 
-  /* Header tint so the whole top of the app looks different, not just a strip. */
-  body.demo-active header { background: #4A3B00; }
+  /* ── DEMO MODE HEADER ──
+     The stripes belong to demo mode alone: they are the signal that this is a
+     sandbox, so showing them normally would both change the app's identity and
+     spend the signal. Text is re-inked dark here because white on these amber
+     tones measures 1.63:1, far below the 4.5:1 needed to stay legible. */
+  body.demo-active header {
+    background: repeating-linear-gradient(
+      -45deg,
+      #F5C518 0 10px,
+      #E0A800 10px 20px
+    );
+  }
+  body.demo-active .logo-main { color: #3D2E00; }
+  body.demo-active .logo-sub { color: rgba(61,46,0,0.8); }
+  /* The (beta 3) badge carries an inline colour, so it needs !important to be
+     re-inked for demo mode. Targeted by id, not span[style], which would also
+     catch the lowercase "i" span and turn it brown. #4A3700 clears 4.5:1 on
+     both stripe tones. */
+  body.demo-active #betaBadge { color: #4A3700 !important; }
+  body.demo-active .settings-btn {
+    border-color: rgba(61,46,0,0.35);
+    background: rgba(255,255,255,0.35);
+    color: #3D2E00;
+  }
+  body.demo-active .settings-btn:active { background: rgba(255,255,255,0.65); }
+  body.demo-active .settings-btn svg { opacity: 0.75; }
 
   .demo-modal-body {
     font-family: var(--sans);
@@ -1072,9 +1127,9 @@
 <header>
   <div class="header-top">
     <div class="logo">
-      <span class="logo-eagle" id="logoEagle" onclick="handleLogoTap()" aria-hidden="true">🦅</span>
+      <button type="button" class="logo-eagle" id="logoEagle" aria-label="Application icon">🦅</button>
       <div class="logo-text">
-        <span class="logo-main"><span style="text-transform:lowercase;">i</span>Clock <span style="font-size:10.4px;font-weight:400;text-transform:lowercase;color:#ABABAB;opacity:1;">(beta 3)</span></span>
+        <span class="logo-main"><span style="text-transform:lowercase;">i</span>Clock <span id="betaBadge" style="font-size:10.4px;font-weight:400;text-transform:lowercase;color:#ABABAB;opacity:1;">(beta 3)</span></span>
         <span class="logo-sub" id="logoSub">Mobile Time Clock</span>
       </div>
     </div>
@@ -2065,6 +2120,22 @@ function lastMarker(seg, type) {
 }
 
 // Shift intervals [start, end): in→out, or in→now while live.
+// Segments and extra routes bucketed by the day they START on, memoised per
+// derive. dayIssues previously scanned EVERY segment for EVERY day rendered,
+// which is O(days x segments): fine at a few months, ~880k iterations and most
+// of a second at three years. Only segments starting on the day can raise that
+// day's issues, so a bucket lookup replaces the scan.
+function segmentsByStartDay(drv) {
+  if (drv._segsByDay) return drv._segsByDay;
+  const segs = new Map(), routes = new Map(), outs = new Map(), markers = new Map();
+  const push = (map, key, v) => { if (!map.has(key)) map.set(key, []); map.get(key).push(v); };
+  for (const s of drv.segments) push(segs, dateKey(new Date(s.inP.ts)), s);
+  for (const r of drv.routeSegs) push(routes, dateKey(new Date(r.startP.ts)), r);
+  for (const p of drv.orphanOuts) push(outs, dateKey(new Date(p.ts)), p);
+  for (const p of drv.orphanMarkers) push(markers, dateKey(new Date(p.ts)), p);
+  return (drv._segsByDay = { segs, routes, outs, markers });
+}
+
 function shiftIntervals(drv, now = Date.now()) {
   const iv = [];
   for (const seg of drv.segments) {
@@ -2131,7 +2202,19 @@ function sumMsForDay(key, intervals) {
 // an 11 PM → 7 AM shift counts 1h on day 1 and 7h on day 2.
 // Paid time = shifts + extra routes, unioned (overlaps never pay twice).
 function calcHoursForDay(key, drv, now = Date.now()) {
-  return sumMsForDay(key, unionIntervals([...shiftIntervals(drv, now), ...extraIntervals(drv, now)])) / 3600000;
+  // The union is rebuilt and re-sorted on every call, i.e. once per rendered
+  // day — O(days x n log n), which dominated render time on a multi-year log.
+  // It depends only on drv, so it is cached against a pinned `now`; a caller
+  // passing an explicit `now` (used by the tests) bypasses the cache so the
+  // behaviour is unchanged.
+  if (arguments.length >= 3) {
+    return sumMsForDay(key, unionIntervals([...shiftIntervals(drv, now), ...extraIntervals(drv, now)])) / 3600000;
+  }
+  if (!drv._allIv) {
+    const pinned = Date.now();
+    drv._allIv = unionIntervals([...shiftIntervals(drv, pinned), ...extraIntervals(drv, pinned)]);
+  }
+  return sumMsForDay(key, drv._allIv) / 3600000;
 }
 
 // Route hours (depart→return legs + extra routes) for a calendar day,
@@ -2162,8 +2245,9 @@ function dayIssues(key, drv) {
   const [start, end] = dayBounds(key);
   const inDay = ts => ts >= start && ts < end;
   const issues = [];
-  for (const seg of drv.segments) {
-    if (!inDay(seg.inP.ts)) continue;
+  // Bucketed by start day rather than scanning every segment for every day.
+  const idx = segmentsByStartDay(drv);
+  for (const seg of (idx.segs.get(key) || [])) {
     if (!seg.outP) {
       if (seg !== drv.openSeg) issues.push(t('issMissingOut'));
       continue; // live shift: later stages may simply be pending
@@ -2189,19 +2273,23 @@ function dayIssues(key, drv) {
       }
     }
   }
-  for (const p of drv.orphanOuts) if (inDay(p.ts)) issues.push(t('issOutNoIn'));
-  for (const p of drv.orphanMarkers) if (inDay(p.ts)) issues.push(t('issMarkerNoIn'));
+  for (const p of (idx.outs.get(key) || [])) issues.push(t('issOutNoIn'));
+  for (const p of (idx.markers.get(key) || [])) issues.push(t('issMarkerNoIn'));
 
   // Extra routes: forgotten end, end without start, overlap with the shift.
-  const shiftIv = shiftIntervals(drv).map(([s, e]) => [s, e]);
+  // shiftIntervals was rebuilt on every call, i.e. once per rendered day; it
+  // depends only on drv, so it is computed once and reused. `now` is pinned at
+  // the same time so a live shift's end does not drift between days.
+  if (!drv._shiftIv) drv._shiftIv = shiftIntervals(drv);
+  const shiftIv = drv._shiftIv;
   const nowTs = Date.now();
-  for (const rs of drv.routeSegs) {
-    if (inDay(rs.startP.ts) && !rs.endP && rs !== drv.openRoute) issues.push(t('issMissingEnd'));
+  for (const rs of (idx.routes.get(key) || [])) {
+    if (!rs.endP && rs !== drv.openRoute) issues.push(t('issMissingEnd'));
     // A live route ends "now", not at Infinity — an unbounded end would report
     // an overlap against every shift interval on the day.
     const rsEnd = rs.endP ? rs.endP.ts
       : (rs === drv.openRoute ? Math.max(nowTs, rs.startP.ts) : null);
-    if (rsEnd !== null && inDay(rs.startP.ts)) {
+    if (rsEnd !== null) {
       for (const [s, e] of shiftIv) {
         if (rs.startP.ts < e && rsEnd > s) { issues.push(t('issOverlap')); break; }
       }
@@ -2216,17 +2304,11 @@ function dayIssues(key, drv) {
   // which let a 24.00h day render as an ordinary one. Note a middle day CAN
   // still carry a punch of its own (a return logged mid-span), so the message
   // states the 24h fact rather than claiming the day is punch-less.
-  const spanning = [
-    ...drv.segments.filter(s => s.outP).map(s => [s.inP.ts, s.outP.ts]),
-    ...drv.routeSegs.filter(s => s.endP).map(s => [s.startP.ts, s.endP.ts])
-  ];
-  for (const [s, e] of spanning) {
-    const sKey = dateKey(new Date(s));
-    const eKey = dateKey(new Date(e));
-    // Only the days strictly between start and end are punch-less pass-through
-    // days; the start and end days carry their own punches and read normally.
-    if (key > sKey && key < eKey) { issues.push(t('issSpanCarryover')); break; }
-  }
+  // closedSpanWalk already enumerates exactly the strictly-between days and is
+  // memoised on drv, so this reuses it instead of rebuilding and re-scanning
+  // the span list once per rendered day.
+  if (!drv._spanSet) drv._spanSet = new Set(closedSpanWalk(drv).days);
+  if (drv._spanSet.has(key)) issues.push(t('issSpanCarryover'));
 
   // A closed span longer than the ceiling stops listing days partway through.
   // Without this the truncation was invisible — the same problem issSpanCapped
@@ -3368,10 +3450,19 @@ let logoTapCount = 0;
 let logoTapTimer = null;
 const LOGO_TAP_WINDOW_MS = 800;
 
-function handleLogoTap() {
+// Counting on `click` alone proved unreliable on mobile: a browser that treats
+// rapid taps as a double-tap gesture (Firefox on Android in particular) may
+// never synthesize the 2nd/3rd click, so the knock silently never completes.
+// pointerdown fires on contact regardless of gesture interpretation, so the
+// count is taken there when the browser supports Pointer Events, with `click`
+// kept as the fallback for anything that doesn't. bindLogoTap() picks exactly
+// one of the two so a tap is never counted twice.
+function handleLogoTap(e) {
+  if (e && e.cancelable) e.preventDefault(); // suppress double-tap zoom / selection
   // Already in demo: taps do nothing. Exit is the visible bar button, so the
   // knock can never toggle back and forth by accident.
   if (demoMode) return;
+
   logoTapCount++;
   clearTimeout(logoTapTimer);
   if (logoTapCount >= 3) {
@@ -3381,6 +3472,25 @@ function handleLogoTap() {
   }
   // Taps must land within the window of each other, or the count resets.
   logoTapTimer = setTimeout(() => { logoTapCount = 0; }, LOGO_TAP_WINDOW_MS);
+}
+
+function bindLogoTap() {
+  const logo = document.getElementById('logoEagle');
+  if (!logo) return;
+  // The inline onclick is removed so the two paths can never both fire.
+  logo.onclick = null;
+  if (window.PointerEvent) {
+    logo.addEventListener('pointerdown', handleLogoTap);
+  } else {
+    // No Pointer Events: touchstart where available, click everywhere else.
+    // touchstart is passive-unsafe by default in some browsers, so it is
+    // registered explicitly as non-passive to allow preventDefault().
+    if ('ontouchstart' in window) {
+      logo.addEventListener('touchstart', handleLogoTap, { passive: false });
+    } else {
+      logo.addEventListener('click', handleLogoTap);
+    }
+  }
 }
 
 function openDemoModal() {
@@ -3450,6 +3560,7 @@ function switchTab(name) {
 loadState();
 loadSettings();
 applyLanguage();
+bindLogoTap();
 renderClockUI();
 setInterval(updateClock, 1000);
 updateClock();
