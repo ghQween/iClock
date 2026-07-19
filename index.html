@@ -949,7 +949,7 @@
   .dev-note {
     font-family: var(--cond);
     font-size: 11.5px;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: lowercase;
     color: var(--red);
@@ -959,10 +959,76 @@
        either section is restructured later. */
     pointer-events: none;
   }
-  /* Under the 20px modal title (margin-bottom: 20px). */
-  #manualDevNote { margin: -16px 0 20px; }
-  /* Under the 13px settings heading (margin-bottom: 14px). */
+  /* Under the 20px modal title (margin-bottom: 20px). Centred to match that
+     title, which is itself text-align: center. */
+  #manualDevNote { margin: -16px 0 20px; text-align: center; }
+  /* Under the 13px settings heading (margin-bottom: 14px). Left-aligned,
+     following that heading's default alignment. */
   #payDevNote { margin: -10px 0 14px; }
+
+  /* ── DEMO MODE CHROME ──
+     Deliberately loud. A subtle badge is exactly what a rushed user misses,
+     and someone who clocks in believing a demo punch was real would lose a
+     shift. The diagonal stripes read as "not production" at a glance, even
+     peripherally. */
+  .demo-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 14px;
+    background: repeating-linear-gradient(
+      -45deg,
+      #F5C518 0 10px,
+      #E0A800 10px 20px
+    );
+    border-bottom: 2px solid #6B5200;
+  }
+  .demo-bar-text {
+    font-family: var(--cond);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #3D2E00;
+  }
+  .demo-exit-btn {
+    flex: none;
+    min-height: 32px;
+    padding: 6px 14px;
+    border: 1.5px solid #3D2E00;
+    border-radius: 4px;
+    background: #FFF8E5;
+    color: #3D2E00;
+    font-family: var(--cond);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    position: relative;
+  }
+  /* 44px hit area without growing the visible chip, confined to its own row so
+     it cannot overlap the header above it. */
+  .demo-exit-btn::before {
+    content: '';
+    position: absolute;
+    top: -6px; bottom: -6px; left: -8px; right: -8px;
+  }
+  .demo-exit-btn:active { background: #F5C518; }
+
+  /* Header tint so the whole top of the app looks different, not just a strip. */
+  body.demo-active header { background: #4A3B00; }
+
+  .demo-modal-body {
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--muted);
+    margin-bottom: 20px;
+    text-align: center;
+  }
 
   .bottom-safe { height: env(safe-area-inset-bottom, 20px); }
 
@@ -1000,7 +1066,7 @@
 <header>
   <div class="header-top">
     <div class="logo">
-      <span class="logo-eagle" aria-hidden="true">🦅</span>
+      <span class="logo-eagle" id="logoEagle" onclick="handleLogoTap()" aria-hidden="true">🦅</span>
       <div class="logo-text">
         <span class="logo-main"><span style="text-transform:lowercase;">i</span>Clock <span style="font-size:10.4px;font-weight:400;text-transform:lowercase;color:#ABABAB;opacity:1;">(beta 3)</span></span>
         <span class="logo-sub" id="logoSub">Mobile Time Clock</span>
@@ -1009,6 +1075,10 @@
     <button class="settings-btn" onclick="switchTab('settings')" aria-label="Open settings"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg></button>
   </div>
   <div class="header-red-bar"></div>
+  <div class="demo-bar" id="demoBar" hidden>
+    <span class="demo-bar-text" id="demoBarText">DEMO MODE — NOTHING IS SAVED</span>
+    <button type="button" class="demo-exit-btn" id="demoExitBtn" onclick="exitDemoMode()">EXIT</button>
+  </div>
 </header>
 
 <div class="tabs" role="tablist">
@@ -1232,6 +1302,18 @@
   </div>
 </div>
 
+<!-- ══ DEMO MODE MODAL ══ -->
+<div class="modal-overlay" id="demoModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="demoModalTitle">
+    <div class="modal-title" id="demoModalTitle">Enter Demo Mode?</div>
+    <div class="demo-modal-body" id="demoModalBody">Try out punches, routes and deletions on a clean slate. Nothing is saved, and your real punches come back when you exit.</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="demoCancelBtn" onclick="closeDemoModal()">Cancel</button>
+      <button class="btn-save" id="demoConfirmBtn" onclick="enterDemoMode()">Yes</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ ERASE ALL DATA MODAL ══ -->
 <div class="modal-overlay" id="eraseModal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="eraseModalTitle">
@@ -1330,6 +1412,13 @@ const I18N = {
     prefsCard: 'Preferences', lblLanguage: 'Language', lblTimeFormat: 'Time Format',
     fmt12: '12-hour', fmt24: '24-hour',
     devNote: '(under development)',
+    demoBarText: 'Demo mode — nothing is saved', demoExit: 'Exit',
+    demoModalTitle: 'Enter Demo Mode?',
+    demoModalBody: 'Try out punches, routes and deletions on a clean slate. Nothing is saved, and your real punches come back when you exit.',
+    demoYes: 'Yes', demoCancel: 'Cancel',
+    demoEntered: 'Demo mode on — nothing is saved',
+    demoExited: 'Demo mode off — your data is back',
+    demoBlocked: 'Not available in demo mode',
     payCard: 'Pay Settings', showPay: 'Show pay estimates', hourlyRate: 'Hourly Rate ($)',
     otThreshold: 'Overtime after (hrs/day)', otMultiplier: 'Overtime Multiplier',
     dataCard: 'Data', exportCSV: 'Download Hours (Excel)', clearAll: 'Erase All Data',
@@ -1454,6 +1543,13 @@ const I18N = {
     prefsCard: 'Preferencias', lblLanguage: 'Idioma', lblTimeFormat: 'Formato de Hora',
     fmt12: '12 horas', fmt24: '24 horas',
     devNote: '(en desarrollo)',
+    demoBarText: 'Modo demo — no se guarda nada', demoExit: 'Salir',
+    demoModalTitle: '¿Entrar al modo demo?',
+    demoModalBody: 'Prueba ponches, rutas y borrados con una hoja en blanco. No se guarda nada, y tus ponches reales regresan al salir.',
+    demoYes: 'Sí', demoCancel: 'Cancelar',
+    demoEntered: 'Modo demo activado — no se guarda nada',
+    demoExited: 'Modo demo desactivado — tus datos regresaron',
+    demoBlocked: 'No disponible en modo demo',
     payCard: 'Ajustes de Pago', showPay: 'Mostrar pago estimado', hourlyRate: 'Tarifa por Hora ($)',
     otThreshold: 'Horas extra después de (h/día)', otMultiplier: 'Multiplicador de Horas Extra',
     dataCard: 'Datos', exportCSV: 'Descargar Horas (Excel)', clearAll: 'Borrar Todo',
@@ -1584,7 +1680,18 @@ function ordinal(n) {
 }
 function ordinalUpper(n) { return ordinal(n).toUpperCase(); }
 
+// ── DEMO MODE ──
+// A throwaway sandbox for trying the app out. Everything derives from `state`,
+// and `state` reaches disk through exactly one function (saveState), so gating
+// that one write makes the sandbox airtight: no demo action can persist, even
+// through a code path added later that we forgot to think about. Real data is
+// held in memory and restored on exit.
+let demoMode = false;
+let realStateSnapshot = null;
+
 function saveState() {
+  // The whole safety property of demo mode lives on this line.
+  if (demoMode) return;
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
   catch(e) { showToast(t('storageFull')); }
 }
@@ -2661,7 +2768,10 @@ function saveManualPunch() {
     const retTs = mkTs(document.getElementById('legReturn').value);
     if (!depTs || !retTs) { showToast(t('fillBothLeg')); return; }
     if (retTs <= depTs) { showToast(t('retAfterDep')); return; }
-    if (retTs > Date.now() + 60000) { showToast(t('noFuture')); return; }
+    // Future punches are a demo-only affordance: it is the one way to see how
+    // a shift WILL compute (overtime thresholds, split shifts) before working
+    // it. Real logs stay past-only.
+    if (!demoMode && retTs > Date.now() + 60000) { showToast(t('noFuture')); return; }
     state.punches.push({ id: state.nextId++, type: 'depart', ts: depTs, note });
     state.punches.push({ id: state.nextId++, type: 'return', ts: retTs, note: '' });
     saveState();
@@ -2682,7 +2792,7 @@ function saveManualPunch() {
     const endTs = mkTs(document.getElementById('extraEnd').value);
     if (!startTs || !endTs) { showToast(t('fillBothRoute')); return; }
     if (endTs <= startTs) { showToast(t('endAfterStart')); return; }
-    if (endTs > Date.now() + 60000) { showToast(t('noFuture')); return; }
+    if (!demoMode && endTs > Date.now() + 60000) { showToast(t('noFuture')); return; }
     // Snapshot every existing route's number BEFORE the insert, so a backdated
     // route landing mid-list can report how many it pushed up.
     const drvBefore = derive();
@@ -2726,7 +2836,7 @@ function saveManualPunch() {
   if (!time) { showToast(t('fillTime')); return; }
   const ts = mkTs(time);
   if (ts === null) { showToast(t('invalidDT')); return; }
-  if (ts > Date.now() + 60000) { showToast(t('noFuture')); return; }
+  if (!demoMode && ts > Date.now() + 60000) { showToast(t('noFuture')); return; }
 
   const punchType = VALID_TYPES.has(type) ? type : 'in';
   state.punches.push({ id: state.nextId++, type: punchType, ts, note });
@@ -2853,6 +2963,9 @@ function applyLanguage() {
   s('fmt12', 'fmt12'); s('fmt24', 'fmt24');
   s('lblPayCard', 'payCard'); s('lblShowPay', 'showPay'); s('lblHourlyRate', 'hourlyRate');
   s('payDevNote', 'devNote'); s('manualDevNote', 'devNote');
+  s('demoBarText', 'demoBarText'); s('demoExitBtn', 'demoExit');
+  s('demoModalTitle', 'demoModalTitle'); s('demoModalBody', 'demoModalBody');
+  s('demoConfirmBtn', 'demoYes'); s('demoCancelBtn', 'demoCancel');
   s('lblOtThreshold', 'otThreshold'); s('lblOtMultiplier', 'otMultiplier');
   s('lblDataCard', 'dataCard'); s('btnExport', 'exportCSV'); s('btnClear', 'clearAll');
   s('btnBackup', 'btnBackup'); s('btnImportBackup', 'btnImportBackup');
@@ -2957,6 +3070,9 @@ function refreshEraseBackupStatus() {
 }
 
 function openEraseModal() {
+  // Exports are blocked in demo mode: a demo timesheet filed for payroll would
+  // be fiction, and a demo backup restored later would overwrite real punches.
+  if (demoMode) { showToast(t('demoBlocked')); return; }
   document.getElementById('eraseModalTitle').textContent = t('eraseModalTitle');
   const [warnLine1, warnLine2] = t('eraseWarningText');
   const warnEl = document.getElementById('eraseWarningText');
@@ -3067,6 +3183,9 @@ function buildBackupHTML() {
 }
 
 async function exportBackup() {
+  // Exports are blocked in demo mode: a demo timesheet filed for payroll would
+  // be fiction, and a demo backup restored later would overwrite real punches.
+  if (demoMode) { showToast(t('demoBlocked')); return; }
   const html = buildBackupHTML();
   const filename = `iclock-backup-${todayKey()}.html`;
   const file = new File([html], filename, { type: 'text/html' });
@@ -3105,6 +3224,9 @@ async function exportBackup() {
 }
 
 function handleImportBackupChange(e) {
+  // Exports are blocked in demo mode: a demo timesheet filed for payroll would
+  // be fiction, and a demo backup restored later would overwrite real punches.
+  if (demoMode) { showToast(t('demoBlocked')); return; }
   const file = e.target.files && e.target.files[0];
   e.target.value = ''; // allow re-selecting the same file later
   if (file) importBackup(file);
@@ -3178,6 +3300,9 @@ function csvCell(v) {
 }
 
 function exportCSV() {
+  // Exports are blocked in demo mode: a demo timesheet filed for payroll would
+  // be fiction, and a demo backup restored later would overwrite real punches.
+  if (demoMode) { showToast(t('demoBlocked')); return; }
   const drv = derive();
   // Ascending, unlike History and the backup: a payroll file reads
   // chronologically.
@@ -3229,6 +3354,82 @@ function exportCSV() {
 }
 
 // ── TABS ──
+// ── DEMO MODE ENTRY / EXIT ──
+// Entry is a deliberate "secret knock": three taps on the eagle. That keeps it
+// out of the way of a working carrier while staying reachable for a demo or a
+// training session, without adding a button that could be hit by accident.
+let logoTapCount = 0;
+let logoTapTimer = null;
+const LOGO_TAP_WINDOW_MS = 800;
+
+function handleLogoTap() {
+  // Already in demo: taps do nothing. Exit is the visible bar button, so the
+  // knock can never toggle back and forth by accident.
+  if (demoMode) return;
+  logoTapCount++;
+  clearTimeout(logoTapTimer);
+  if (logoTapCount >= 3) {
+    logoTapCount = 0;
+    openDemoModal();
+    return;
+  }
+  // Taps must land within the window of each other, or the count resets.
+  logoTapTimer = setTimeout(() => { logoTapCount = 0; }, LOGO_TAP_WINDOW_MS);
+}
+
+function openDemoModal() {
+  document.getElementById('demoModal').classList.add('open');
+}
+
+function closeDemoModal() {
+  document.getElementById('demoModal').classList.remove('open');
+}
+
+function enterDemoMode() {
+  closeDemoModal();
+  if (demoMode) return;
+  // Deep clone, not a reference: loadState() and the punch handlers assign
+  // INTO state, so holding the live object would hand back mutated data.
+  realStateSnapshot = JSON.parse(JSON.stringify(state));
+  demoMode = true;
+  // Clean slate for punches, but keep settings (pay rate, language, time
+  // format) so estimates and labels look like the user's real app.
+  state.punches = [];
+  state.nextId = 1;
+  state.lastRouteDesc = '';
+  state.lastBackupTs = null;
+  currentDay = todayKey();
+  applyDemoChrome();
+  renderClockUI();
+  refreshHistoryIfVisible();
+  showToast(t('demoEntered'));
+}
+
+function exitDemoMode() {
+  if (!demoMode) return;
+  // Restore first, then clear the flag, so nothing can write demo data during
+  // the swap. Real data was never written, so there is nothing to undo on disk.
+  state = realStateSnapshot;
+  realStateSnapshot = null;
+  demoMode = false;
+  currentDay = todayKey();
+  applyDemoChrome();
+  loadSettings();
+  renderClockUI();
+  refreshHistoryIfVisible();
+  showToast(t('demoExited'));
+}
+
+// Shows/hides the demo banner and tints the header so the mode is obvious at a
+// glance. A small badge is exactly what a rushed user misses — and someone who
+// clocks in believing it is real would lose a shift — so this is deliberately
+// loud rather than tasteful.
+function applyDemoChrome() {
+  document.body.classList.toggle('demo-active', demoMode);
+  const bar = document.getElementById('demoBar');
+  if (bar) bar.hidden = !demoMode;
+}
+
 function switchTab(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(tabEl => { tabEl.classList.remove('active'); tabEl.setAttribute('aria-selected', 'false'); });
